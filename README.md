@@ -1,6 +1,8 @@
 # PyDNG
 Python based Adobe DNG RAW Converter. Tuned for use with the Raspberry Pi Camera. 
 
+Requires: Python2.7 and Numpy
+
 Convert raw bayer data from raw containing .jpgs from the Raspberry Pi Camera V2 ( SonyIMX219 )
 
 Calibration and Bayer Matrix corrections are included in the dark/shade/pxl folders.
