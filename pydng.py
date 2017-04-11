@@ -113,7 +113,7 @@ def createDNG(input_file):
                             pass
             img[k1][k0] = np.median(array)
 
-    # extract bayer raw to 16bit numyp array
+    # extract bayer raw to 16bit numpy array
     rawImage = extractRAW(input_file)
 
     # raw image white and black levels
@@ -150,7 +150,7 @@ def createDNG(input_file):
     rawIFD.getTag('ImageWidth').value[0] = width
     rawIFD.getTag('ImageLength').value[0] = height
     rawIFD.getTag('StripByteCounts').value[0] = width * height * 2
-    rawIFD.getTag('BitsPerSample').value[0] = 10
+    rawIFD.getTag('BitsPerSample').value[0] = 16
     rawIFD.getTag('SamplesPerPixel').value[0] = 1
     rawIFD.getTag('RowsPerStrip').value[0] = height
     rawIFD.getTag('ActiveArea').value[0] = 0
@@ -166,7 +166,7 @@ def createDNG(input_file):
     new_blck = RATIONAL()
     new_blck.num = black_level
     rawIFD.getTag('BlackLevel').value[0] = new_blck
-    rawIFD.getTag('WhiteLevel').value[0] = 1023
+    rawIFD.getTag('WhiteLevel').value[0] = 65535
 
     # Change Order to GBRG when y-flipped
     rawIFD.getTag('CFAPattern').value[0] = 2
@@ -176,3 +176,5 @@ def createDNG(input_file):
 
     dng.writeDNG(outputDNG)
     print(input_file + ' converted to ' + outputDNG)
+
+createDNG('color.jpg')
