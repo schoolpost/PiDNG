@@ -132,7 +132,7 @@ def createDNG(input_file):
     output = ((rawImage - black_median) * np.mean(shading_median - black_median) / (shading_median - black_median))
 
     # remove hot pixels with pixel location txt file.
-    hotPixelRemove(output, 'pxl.txt')
+    hotPixelRemove(output, 'pxl/pxl.txt')
 
     # map values back to orignal range
     rawImage = np.interp(output, [output.min(), output.max()], [black_level, white_level])
