@@ -35,3 +35,6 @@ Raspberry Pi Camera V1 ( OV5647 ) is untested.
 
 -Automated calibration script to let users generate dark/shade/pxl from input images
 
+# License
+
+This project is licensed under the terms of the [MIT license](https://opensource.org/licenses/MIT).
