@@ -247,7 +247,6 @@ class DNG:
             stripOffsets.append(self.wf.tell())
             for rowNum in range(0,rowsPerStrip):
                 rowData = ifd.image[stripNum*rowsPerStrip+rowNum,:]
-                # print(rowData)
                 self.wf.write(struct.pack('H'*len(rowData),*rowData))
                 
         currentTell = self.wf.tell()

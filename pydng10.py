@@ -177,5 +177,7 @@ def createDNG(input_file):
     dng.writeDNG(outputDNG)
     print(input_file + ' converted to ' + outputDNG)
 
-
 createDNG('color.jpg')
+
+
+

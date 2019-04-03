@@ -166,7 +166,7 @@ def createDNG(input_file):
     new_blck = RATIONAL()
     new_blck.num = black_level
     rawIFD.getTag('BlackLevel').value[0] = new_blck
-    rawIFD.getTag('WhiteLevel').value[0] = 65535
+    rawIFD.getTag('WhiteLevel').value[0] = 1023
 
     # Change Order to GBRG when y-flipped
     rawIFD.getTag('CFAPattern').value[0] = 2

@@ -1,6 +1,9 @@
 import struct, collections
 import numpy as np
 from DNGTags import *
+from multiprocessing import Pool
+import multiprocessing
+import itertools
 
 
 class DNG:
@@ -195,27 +198,24 @@ class DNG:
         stripOffsetsTag = ifd.tags[DNG_TAGS_STR_ID['StripOffsets']]
         stripOffsets = []
         beginTell = self.wf.tell()
+
+        p = Pool(multiprocessing.cpu_count())
+
         for stripNum in range(0, numStrips):
             stripOffsets.append(self.wf.tell())
             for rowNum in range(0, rowsPerStrip):
                 rowData = ifd.image[stripNum * rowsPerStrip + rowNum, :]
-
                 # pack 10 bit data
+                pxls = []
                 count = 0
-                for i in range(0, len(rowData) + 1, 4):
+                for i in range(0, 3280 + 1, 4):
                     if i != 0:
-                        samples = rowData[count:i]
-                        temp = ''
-                        for k in samples:
-                            temp += '{0:010b}'.format(k)
-                        cont = []
-                        count2 = 0
-                        for j in range(0, len(temp) + 1, 8):
-                            if j != 0:
-                                cont.append(temp[count2:j])
-                                count2 = + j
+                        samples = rowData[count:i].tolist()
+                        pxls.append(samples)
                         count = + i
-                        self.wf.write(struct.pack('B' * 5, int(cont[0], 2), int(cont[1], 2), int(cont[2], 2), int(cont[3], 2), int(cont[4], 2)))
+                        
+                data = p.map(pack10, pxls)
+                self.wf.write(struct.pack('B' * 4100, *list(itertools.chain.from_iterable(data))))
 
         currentTell = self.wf.tell()
 
@@ -239,3 +239,27 @@ class DNG:
 
 for key, tag in DNG_TAGS_STR_ID.items():
     DNG_TAGS_ID_STR[tag] = key
+
+def pack10(samples):
+    px0 = (samples[0] >> 2 )
+    px2 = ((samples[0] & 0b0000000000000011) << 6 ) 
+    px2 += samples[1] >> 4
+    px3 = ((samples[1] & 0b0000000000001111) << 4 ) 
+    px3 += samples[2] >> 6
+    px4 = ((samples[2] & 0b0000000000111111) << 2 ) 
+    px4 += samples[3] >> 8
+    px5 = (samples[3] & 0b0000000011111111 )
+    return [px0, px2, px3, px4, px5]
+
+
+# def pack10(samples):
+#     temp = ''
+#     for k in samples:
+#         temp += '{0:010b}'.format(k)
+#     cont = []
+#     count2 = 0
+#     for j in range(0, len(temp) + 1, 8):
+#         if j != 0:
+#             cont.append(temp[count2:j])
+#             count2 = + j
+#     return [int(cont[0],2), int(cont[1],2), int(cont[2],2), int(cont[3],2), int(cont[4],2)]

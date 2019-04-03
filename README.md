@@ -27,7 +27,7 @@ Raspberry Pi Camera V1 ( OV5647 ) is untested.
 
 -Copy EXIF Data from .jpg to .dng
 
--Fix magenta tinted highligths 
+-Fix magenta tinted highlights
 
 -Improve 10bit/8bit encoding in DNG_10.py
 
