@@ -15,11 +15,11 @@ pxl - Contains a .txt with list of pixel locations with hot/dead pixels. ( first
 
 Note: You can use the provided references, but users should generate calibration from their own unqiue sensors as variations likely exist for best results. 
 
-pydng.py - Main python file used for generating the DNG. Pass input file string into function, change appropraite tags if desired ( model, make, organization ) Note: DNG files will be outputed in 16-bit with this file.
+pydng.py - Main python file used for generating the DNG. Pass input file string into function, change appropraite tags if desired ( model, make, organization ) 
 
-pydng10.py - Identical to pydng.py. Use for generating 10-bit DNG. 
+Output is 10bit DNG file
 
-Usage Exmaple: pydng10.createDNG('color.jpg')
+Usage Exmaple: pydng.createDNG('color.jpg')
 
 Raspberry Pi Camera V1 ( OV5647 ) is untested.
 
@@ -28,8 +28,6 @@ Raspberry Pi Camera V1 ( OV5647 ) is untested.
 -Copy EXIF Data from .jpg to .dng
 
 -Fix magenta tinted highlights
-
--Improve 10bit/8bit encoding in DNG_10.py
 
 -Apply calibrated color matrix values 
 

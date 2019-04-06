@@ -1,4 +1,4 @@
-# generate 16-bit DNG from PiCamera V2 ( Sony IMX219 )
+# generate 10-bit DNG from PiCamera V2 ( Sony IMX219 )
 from DNG import *
 import io
 import os
@@ -90,6 +90,7 @@ def createDNG(input_file):
         for byte in range(4):
             data[:, byte::5] |= ((data[:, 4::5] >> ((4 - byte) * 2)) & 0b11)
         data = np.delete(data, np.s_[4::5], 1)
+
         return data
 
     def hotPixelRemove(img, ref):
@@ -132,7 +133,7 @@ def createDNG(input_file):
     output = ((rawImage - black_median) * np.mean(shading_median - black_median) / (shading_median - black_median))
 
     # remove hot pixels with pixel location txt file.
-    hotPixelRemove(output, 'pxl/pxl.txt')
+    # hotPixelRemove(output, 'pxl/pxl.txt')
 
     # map values back to orignal range
     rawImage = np.interp(output, [output.min(), output.max()], [black_level, white_level])
@@ -150,7 +151,7 @@ def createDNG(input_file):
     rawIFD.getTag('ImageWidth').value[0] = width
     rawIFD.getTag('ImageLength').value[0] = height
     rawIFD.getTag('StripByteCounts').value[0] = width * height * 2
-    rawIFD.getTag('BitsPerSample').value[0] = 16
+    rawIFD.getTag('BitsPerSample').value[0] = 10
     rawIFD.getTag('SamplesPerPixel').value[0] = 1
     rawIFD.getTag('RowsPerStrip').value[0] = height
     rawIFD.getTag('ActiveArea').value[0] = 0
@@ -166,7 +167,7 @@ def createDNG(input_file):
     new_blck = RATIONAL()
     new_blck.num = black_level
     rawIFD.getTag('BlackLevel').value[0] = new_blck
-    rawIFD.getTag('WhiteLevel').value[0] = 1023
+    rawIFD.getTag('WhiteLevel').value[0] = 800
 
     # Change Order to GBRG when y-flipped
     rawIFD.getTag('CFAPattern').value[0] = 2
@@ -175,6 +176,11 @@ def createDNG(input_file):
     rawIFD.getTag('CFAPattern').value[3] = 0
 
     dng.writeDNG(outputDNG)
+    # rawImage = np.flip(rawImage)
+    # rawImage.tofile('proc2.raw')
     print(input_file + ' converted to ' + outputDNG)
 
 createDNG('color.jpg')
+
+
+
