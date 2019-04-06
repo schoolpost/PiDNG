@@ -122,4 +122,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-.vscode
+/vscode
+/.vscode
+
+Pipfile
+Pipfile.lock
+
