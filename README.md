@@ -19,7 +19,8 @@ Examples:
   pyraw2dng.py -w 3280 -l 2464 color.jpg
 ```
 
-# TODO List:
+TODO
+------------
 
 -Copy EXIF Data from .jpg to .dng
 
@@ -29,13 +30,17 @@ Examples:
 
 -Automated calibration script to let users generate dark/shade/pxl from input images
 
-# Credits
+
+Credits
+------------
 Source referenced from:
 
 Krontech | [chronos-utils](https://github.com/krontech/chronos-utils)
 
 Andrew Baldwin | [MLVRawViewer](https://bitbucket.org/baldand/mlrawviewer)
 
-# License
+
+License
+------------
 This project is licensed under the terms of the [MIT license](https://opensource.org/licenses/MIT).
 
