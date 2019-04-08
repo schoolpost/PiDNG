@@ -9,8 +9,9 @@ Requires: Python 2.7 and Numpy
 Instructions
 ------------
 ```
-
 python setup.py build
+
+# move the bitunpack.so from the build folder to the root folder #
 
 pydng.py <options> <inputFilename> 
 
