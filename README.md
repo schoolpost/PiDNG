@@ -31,7 +31,9 @@ Examples:
 
 # Credits
 Source referenced from:
+
 Krontech | [chronos-utils](https://github.com/krontech/chronos-utils)
+
 Andrew Baldwin | [MLVRawViewer](https://bitbucket.org/baldand/mlrawviewer)
 
 # License
