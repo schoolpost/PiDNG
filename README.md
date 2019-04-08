@@ -13,7 +13,7 @@ python setup.py build
 
 # move the bitunpack.so from the build folder to the root folder #
 
-pydng.py <options> <inputFilename> 
+python pydng.py <options> <inputFilename> 
 
 Options:
  -w/--width  Frame width
