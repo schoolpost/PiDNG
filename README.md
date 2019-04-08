@@ -22,8 +22,11 @@ Examples:
 # TODO List:
 
 -Copy EXIF Data from .jpg to .dng
+
 -Apply calibrated color matrix values 
+
 -Map or remove Bad pixels
+
 -Automated calibration script to let users generate dark/shade/pxl from input images
 
 # Credits
