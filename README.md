@@ -44,7 +44,3 @@ Krontech | [chronos-utils](https://github.com/krontech/chronos-utils)
 Andrew Baldwin | [MLVRawViewer](https://bitbucket.org/baldand/mlrawviewer)
 
 
-License
-------------
-This project is licensed under the terms of the [MIT license](https://opensource.org/licenses/MIT).
-
