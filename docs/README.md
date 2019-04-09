@@ -6,6 +6,8 @@ Python based Adobe DNG RAW Converter. Tuned for use with the Raspberry Pi Camera
 Convert raw bayer data from raw containing .jpgs from the Raspberry Pi Camera V2 ( SonyIMX219 ) into DNG files.
 Requires: Python 2.7 and Numpy
 
+![](https://github.com/schoolpost/pydng/blob/master/docs/demo.jpg?raw=true)
+
 Instructions
 ------------
 ```
