@@ -1,4 +1,5 @@
 #!/usr/bin/python2.7
+# https://github.com/krontech/chronos-utils/tree/master/python_raw2dng
 
 # standard python imports
 import sys
@@ -455,7 +456,11 @@ def convertVideo(inputFilename, outputFilenameFormat, width, length, colour, bpp
     dngTemplate.ImageDataStrips.append(rawFrame)
 
     rawdata = rawFrame.tostring()
-    tile1 = bitunpack.pack16tolj(rawdata,width,length,16,0,1,0,"")
+    # https://bitbucket.org/baldand/mlrawviewer/src/e7abaaf4cf9be66f46e0c8844297be0e7d88c288/bitunpack.c?at=master&fileviewer=file-view-default
+    tile1 = bitunpack.pack16tolj(rawdata,width,length,16,0,0,0,"")
+
+    # tile1 = bitunpack.pack16tolj(rawdata,width,length/2,16,width,width/2,width/2,"")
+    # tile1 = bitunpack.pack16tolj(rawdata,width,length/2,16,0,width/2,width/2,"")
 
     # set up the FULL IFD
     mainIFD = dngIFD()
@@ -520,8 +525,8 @@ def convertVideo(inputFilename, outputFilenameFormat, width, length, colour, bpp
 
 
 def main():
-    width = None
-    length = None
+    width = 3280
+    length = 2464
     colour = True
     inputFilename = None
     outputFilenameFormat = None
@@ -543,18 +548,6 @@ def main():
         if o in ('--help'):
             print helptext
             sys.exit(0)
-
-        elif o in ('-C', '--color'):
-            colour = True
-
-        elif o in ('-M', '--mono'):
-            colour = False
-        
-        elif o in ('-p', '--packed'):
-            bpp = 12
-        
-        elif o in ('--oldpack'):
-            bpp = -12
         
         elif o in ('-l', '-h', '--length', '--height'):
             length = int(a)
