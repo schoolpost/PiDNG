@@ -11,8 +11,6 @@ Instructions
 ```
 python setup.py build
 
-# move the bitunpack.so from the build folder to the root folder #
-
 python pydng.py <options> <inputFilename> 
 
 Options:
