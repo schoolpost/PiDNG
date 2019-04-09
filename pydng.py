@@ -445,7 +445,7 @@ def pack12(data):
     return out
 
 
-def convertVideo(inputFilename, outputFilenameFormat, width, length, colour, bpp):
+def convert(inputFilename, outputFilenameFormat, width, length, colour, bpp):
     dngTemplate = DNG()
 
     creationTime = creation_date(inputFilename)
@@ -569,7 +569,7 @@ def main():
         inputFilename = args[0]
         outputFilenameFormat = args[1]
 
-    convertVideo(inputFilename, outputFilenameFormat, width, length, colour, bpp)
+    convert(inputFilename, outputFilenameFormat, width, length, colour, bpp)
 
 if __name__ == "__main__":
     main()
