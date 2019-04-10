@@ -362,7 +362,7 @@ def process(input_file):
     rawImage = extractRAW(input_file)
     # rawImage = np.rot90(rawImage, 2)
 
-        # lens shade frame
+    # lens shade frame
     shading = np.fromfile('shade/shade_sun', dtype=np.uint16)
     shading = np.reshape(shading, rawImage.shape)
 
@@ -445,7 +445,7 @@ def pack12(data):
     return out
 
 
-def convert(inputFilename, outputFilenameFormat, width, length, colour, bpp):
+def convert(inputFilename, width, length, colour, bpp):
     dngTemplate = DNG()
 
     creationTime = creation_date(inputFilename)
@@ -453,40 +453,37 @@ def convert(inputFilename, outputFilenameFormat, width, length, colour, bpp):
 
     # set up the image binary data
     rawFrame = process(inputFilename)
-    dngTemplate.ImageDataStrips.append(rawFrame)
+    
 
     rawdata = rawFrame.tostring()
     # https://bitbucket.org/baldand/mlrawviewer/src/e7abaaf4cf9be66f46e0c8844297be0e7d88c288/bitunpack.c?at=master&fileviewer=file-view-default
-    tile1 = bitunpack.pack16tolj(rawdata,width,length,16,0,0,0,"")
 
-    # tile1 = bitunpack.pack16tolj(rawdata,width,length/2,16,width,width/2,width/2,"")
-    # tile1 = bitunpack.pack16tolj(rawdata,width,length/2,16,0,width/2,width/2,"")
+    tile1 = bitunpack.pack16tolj(rawdata,width,length/2,16,0,width/2,width/2,"")
+    tile2 = bitunpack.pack16tolj(rawdata,width,length/2,16,width,width/2,width/2,"")
+    dngTemplate.ImageDataStrips.append(tile1)
+    dngTemplate.ImageDataStrips.append(tile2)
 
     # set up the FULL IFD
     mainIFD = dngIFD()
-    mainTagStripOffset = dngTag(Tag.TileOffsets, [0])
+    mainTagStripOffset = dngTag(Tag.TileOffsets, [0 for tile in dngTemplate.ImageDataStrips])
+    mainIFD.tags.append(mainTagStripOffset)
     mainIFD.tags.append(dngTag(Tag.NewSubfileType           , [0]))
-    mainIFD.tags.append(dngTag(Tag.TileByteCounts          , [len(tile1)]))
+    mainIFD.tags.append(dngTag(Tag.TileByteCounts          , [len(tile) for tile in dngTemplate.ImageDataStrips]))
     mainIFD.tags.append(dngTag(Tag.ImageWidth               , [width]))
     mainIFD.tags.append(dngTag(Tag.ImageLength              , [length]))
     mainIFD.tags.append(dngTag(Tag.SamplesPerPixel          , [1]))
     mainIFD.tags.append(dngTag(Tag.BitsPerSample            , [16]))
-    mainIFD.tags.append(dngTag(Tag.TileWidth             , [width]))
+    mainIFD.tags.append(dngTag(Tag.TileWidth             , [width/2]))
     mainIFD.tags.append(dngTag(Tag.TileLength             , [length]))
     mainIFD.tags.append(dngTag(Tag.Compression              , [7])) 
-    
     mainIFD.tags.append(dngTag(Tag.PhotometricInterpretation, [32803])) 
     mainIFD.tags.append(dngTag(Tag.CFARepeatPatternDim      , [2, 2]))
     mainIFD.tags.append(dngTag(Tag.CFAPattern               , [2, 1, 1, 0]))
-
-    mainIFD.tags.append(mainTagStripOffset)
-    mainIFD.tags.append(dngTag(Tag.PlanarConfiguration      , [1]))
-    
     mainIFD.tags.append(dngTag(Tag.BlackLevel               , [np.amin(rawFrame)]))
     mainIFD.tags.append(dngTag(Tag.WhiteLevel               , [np.amax(rawFrame)]))
     mainIFD.tags.append(dngTag(Tag.Make                     , "Camera V2"))
     mainIFD.tags.append(dngTag(Tag.Model                    , "IMX219"))
-    mainIFD.tags.append(dngTag(Tag.DateTime                 , creationTimeString))
+    # mainIFD.tags.append(dngTag(Tag.DateTime                 , [creationTimeString]))
     mainIFD.tags.append(dngTag(Tag.Software                 , "pydng"))
     mainIFD.tags.append(dngTag(Tag.Orientation              , [1]))
     
@@ -509,12 +506,10 @@ def convert(inputFilename, outputFilenameFormat, width, length, colour, bpp):
 
     totalLength = dngTemplate.dataLen()
     # this must happen after dataLen is calculated! (dataLen caches the offsets)
-    mainTagStripOffset.setValue([dngTemplate.StripOffsets[0]])
+    mainTagStripOffset.setValue([k for offset,k in dngTemplate.StripOffsets.items()])
 
     buf = bytearray(totalLength)
     dngTemplate.setBuffer(buf)
-
-    dngTemplate.ImageDataStrips[0] = tile1
     dngTemplate.write()
 
     outputDNG = inputFilename.strip('.jpg') + '.dng'
@@ -564,12 +559,11 @@ def main():
         dirname = os.path.splitext(inputFilename)[0]
         basename = os.path.basename(inputFilename)
         print basename
-        outputFilenameFormat = dirname + '/frame_%06d.DNG'
     else:
         inputFilename = args[0]
-        outputFilenameFormat = args[1]
 
-    convert(inputFilename, outputFilenameFormat, width, length, colour, bpp)
+
+    convert(inputFilename, width, length, colour, bpp)
 
 if __name__ == "__main__":
     main()
