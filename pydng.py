@@ -465,7 +465,6 @@ def convert(inputFilename, outputFilenameFormat, width, length, colour, bpp):
     creationTimeString = time.strftime("%x %X", time.localtime(creationTime))
 
     # set up the image binary data
-    # 410,352
     rawFrame = process(inputFilename)
     tw = 410
     th = 352
@@ -474,14 +473,12 @@ def convert(inputFilename, outputFilenameFormat, width, length, colour, bpp):
         d = tile.tostring()
         w = tile.shape[1]
         h = tile.shape[0]
+        # https://bitbucket.org/baldand/mlrawviewer/src/e7abaaf4cf9be66f46e0c8844297be0e7d88c288/bitunpack.c?at=master&fileviewer=file-view-default
         tile1 = bitunpack.pack16tolj(d,w,h/2,16,0,w/2,w/2,"")
         tile2 = bitunpack.pack16tolj(d,w,h/2,16,w,w/2,w/2,"")
         dngTemplate.ImageDataStrips.append(tile1)
         dngTemplate.ImageDataStrips.append(tile2)
     
-    # rawdata = rawFrame.tostring()
-    # https://bitbucket.org/baldand/mlrawviewer/src/e7abaaf4cf9be66f46e0c8844297be0e7d88c288/bitunpack.c?at=master&fileviewer=file-view-default
-
 
     # set up the FULL IFD
     mainIFD = dngIFD()
@@ -503,7 +500,7 @@ def convert(inputFilename, outputFilenameFormat, width, length, colour, bpp):
     mainIFD.tags.append(dngTag(Tag.WhiteLevel               , [np.amax(rawFrame)]))
     mainIFD.tags.append(dngTag(Tag.Make                     , "Camera V2"))
     mainIFD.tags.append(dngTag(Tag.Model                    , "IMX219"))
-    # mainIFD.tags.append(dngTag(Tag.DateTime                 , [creationTimeString]))
+    mainIFD.tags.append(dngTag(Tag.DateTime                 , creationTimeString))
     mainIFD.tags.append(dngTag(Tag.Software                 , "pydng"))
     mainIFD.tags.append(dngTag(Tag.Orientation              , [1]))
     mainIFD.tags.append(dngTag(Tag.DNGVersion               , [1, 4, 0, 0]))
