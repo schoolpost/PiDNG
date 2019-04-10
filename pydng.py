@@ -444,24 +444,44 @@ def pack12(data):
     out[:,2::3] = data[:,1::2] & 0b0000001111111111 
     return out
 
+def blockshaped(arr, nrows, ncols):
+    """
+    Return an array of shape (n, nrows, ncols) where
+    n * nrows * ncols = arr.size
 
-def convert(inputFilename, width, length, colour, bpp):
+    If arr is a 2D array, the returned array should look like n subblocks with
+    each subblock preserving the "physical" layout of arr.
+    """
+    h, w = arr.shape
+    return (arr.reshape(h//nrows, nrows, -1, ncols)
+               .swapaxes(1,2)
+               .reshape(-1, nrows, ncols))
+
+
+def convert(inputFilename, outputFilenameFormat, width, length, colour, bpp):
     dngTemplate = DNG()
 
     creationTime = creation_date(inputFilename)
     creationTimeString = time.strftime("%x %X", time.localtime(creationTime))
 
     # set up the image binary data
+    # 410,352
     rawFrame = process(inputFilename)
+    tw = 410
+    th = 352
+    tiles = blockshaped(rawFrame, th,tw)
+    for tile in tiles:
+        d = tile.tostring()
+        w = tile.shape[1]
+        h = tile.shape[0]
+        tile1 = bitunpack.pack16tolj(d,w,h/2,16,0,w/2,w/2,"")
+        tile2 = bitunpack.pack16tolj(d,w,h/2,16,w,w/2,w/2,"")
+        dngTemplate.ImageDataStrips.append(tile1)
+        dngTemplate.ImageDataStrips.append(tile2)
     
-
-    rawdata = rawFrame.tostring()
+    # rawdata = rawFrame.tostring()
     # https://bitbucket.org/baldand/mlrawviewer/src/e7abaaf4cf9be66f46e0c8844297be0e7d88c288/bitunpack.c?at=master&fileviewer=file-view-default
 
-    tile1 = bitunpack.pack16tolj(rawdata,width,length/2,16,0,width/2,width/2,"")
-    tile2 = bitunpack.pack16tolj(rawdata,width,length/2,16,width,width/2,width/2,"")
-    dngTemplate.ImageDataStrips.append(tile1)
-    dngTemplate.ImageDataStrips.append(tile2)
 
     # set up the FULL IFD
     mainIFD = dngIFD()
@@ -473,8 +493,8 @@ def convert(inputFilename, width, length, colour, bpp):
     mainIFD.tags.append(dngTag(Tag.ImageLength              , [length]))
     mainIFD.tags.append(dngTag(Tag.SamplesPerPixel          , [1]))
     mainIFD.tags.append(dngTag(Tag.BitsPerSample            , [16]))
-    mainIFD.tags.append(dngTag(Tag.TileWidth             , [width/2]))
-    mainIFD.tags.append(dngTag(Tag.TileLength             , [length]))
+    mainIFD.tags.append(dngTag(Tag.TileWidth             , [tw/2]))
+    mainIFD.tags.append(dngTag(Tag.TileLength             , [th]))
     mainIFD.tags.append(dngTag(Tag.Compression              , [7])) 
     mainIFD.tags.append(dngTag(Tag.PhotometricInterpretation, [32803])) 
     mainIFD.tags.append(dngTag(Tag.CFARepeatPatternDim      , [2, 2]))
@@ -486,7 +506,6 @@ def convert(inputFilename, width, length, colour, bpp):
     # mainIFD.tags.append(dngTag(Tag.DateTime                 , [creationTimeString]))
     mainIFD.tags.append(dngTag(Tag.Software                 , "pydng"))
     mainIFD.tags.append(dngTag(Tag.Orientation              , [1]))
-    
     mainIFD.tags.append(dngTag(Tag.DNGVersion               , [1, 4, 0, 0]))
     mainIFD.tags.append(dngTag(Tag.DNGBackwardVersion       , [1, 2, 0, 0]))
     mainIFD.tags.append(dngTag(Tag.UniqueCameraModel        , "RaspberryPi Camera V2"))
@@ -506,6 +525,7 @@ def convert(inputFilename, width, length, colour, bpp):
 
     totalLength = dngTemplate.dataLen()
     # this must happen after dataLen is calculated! (dataLen caches the offsets)
+
     mainTagStripOffset.setValue([k for offset,k in dngTemplate.StripOffsets.items()])
 
     buf = bytearray(totalLength)
@@ -559,11 +579,12 @@ def main():
         dirname = os.path.splitext(inputFilename)[0]
         basename = os.path.basename(inputFilename)
         print basename
+        outputFilenameFormat = dirname + '/frame_%06d.DNG'
     else:
         inputFilename = args[0]
+        outputFilenameFormat = args[1]
 
-
-    convert(inputFilename, width, length, colour, bpp)
+    convert(inputFilename, outputFilenameFormat, width, length, colour, bpp)
 
 if __name__ == "__main__":
     main()
