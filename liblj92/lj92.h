@@ -66,5 +66,5 @@ int lj92_decode(lj92 lj,
 int lj92_encode(uint16_t* image, int width, int height, int bitdepth,
                 int readLength, int skipLength,
                 uint16_t* delinearize,int delinearizeLength,
-                uint8_t** encoded, int* encodedLength);
+                uint8_t** encoded, int* encodedLength, int ljPredictor);
 #endif

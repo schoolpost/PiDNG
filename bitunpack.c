@@ -630,10 +630,11 @@ bitunpack_pack16tolj(PyObject* self, PyObject *args)
     int inskip = 0;
     unsigned const char* delin = 0;
     int delinlen = 0;
+    int ljPredictor = 6;
 
-    if (!PyArg_ParseTuple(args, "t#iiiiiit#", &input, &inlen,
+    if (!PyArg_ParseTuple(args, "t#iiiiiit#i", &input, &inlen,
         &width, &height, &bitdepth,
-        &inindex, &inread, &inskip, &delin, &delinlen))
+        &inindex, &inread, &inskip, &delin, &delinlen, &ljPredictor))
         return NULL;
 
     //printf("width=%d,height=%d,inlen=%d\n",width,height,inlen);
@@ -645,10 +646,10 @@ bitunpack_pack16tolj(PyObject* self, PyObject *args)
     Py_BEGIN_ALLOW_THREADS;
     if (delinlen == 0) {
         ret = lj92_encode((uint16_t*)&input[inindex],width,height,bitdepth,
-                inread,inskip,NULL,0,&encoded,&encodedLength);
+                inread,inskip,NULL,0,&encoded,&encodedLength,ljPredictor);
     } else {
         ret = lj92_encode((uint16_t*)&input[inindex],width,height,bitdepth,
-                inread,inskip,(uint16_t*)delin,delinlen,&encoded,&encodedLength);
+                inread,inskip,(uint16_t*)delin,delinlen,&encoded,&encodedLength,ljPredictor);
     }
     //printf("lj92_encode ret=%d\n",ret);
     if (ret != LJ92_ERROR_NONE) return NULL;

@@ -715,6 +715,7 @@ typedef struct _lje {
     u16 huffenc[17];
     u16 huffbits[17];
     int huffsym[17];
+    int ljPredictor;
 } lje;
 
 int frequencyScan(lje* self) {
@@ -969,7 +970,7 @@ void writeHeader(lje* self) {
         e[w++] = 1; // Components
         e[w++] = 0; //
         e[w++] = 0; //
-        e[w++] = 6; // Predictor
+        e[w++] = self->ljPredictor; // Predictor
         e[w++] = 0; //
         e[w++] = 0; //
     self->encodedWritten = w;
@@ -992,6 +993,7 @@ void writeBody(lje* self) {
     uint16_t* rows[2];
     rows[0] = rowcache;
     rows[1] = &rowcache[self->width];
+    int ljPredictor = self->ljPredictor;
 
     int col = 0;
     int row = 0;
@@ -1013,9 +1015,24 @@ void writeBody(lje* self) {
             Px = rows[1][col-1];
         else if (col == 0)
             Px = rows[0][col];
+        else if (ljPredictor == 1)
+            Px = rows[1][col-1];
+        else if (ljPredictor == 2)
+            Px = rows[0][col];
+        else if (ljPredictor == 3)
+            Px = rows[0][col-1];
+        else if (ljPredictor == 4)
+            Px = rows[1][col-1] + rows[0][col] - rows[0][col-1];
+        else if (ljPredictor == 5)
+            Px = rows[1][col-1] + ((rows[0][col] - rows[0][col-1])>>1);
+        else if (ljPredictor == 7)
+            Px = ((rows[1][col-1] - rows[0][col-1])>>1);
+        else if (ljPredictor == 6)
+            Px = rows[0][col] + ((rows[1][col-1] - rows[0][col-1])>>1);
         else
             Px = rows[0][col] + ((rows[1][col-1] - rows[0][col-1])>>1);
         diff = rows[1][col] - Px;
+
         int ssss = 32 - __builtin_clz(abs(diff));
         if (diff==0) ssss=0;
         //printf("%d %d %d %d %d\n",col,row,Px,diff,ssss);
@@ -1103,7 +1120,7 @@ void writeBody(lje* self) {
 int lj92_encode(uint16_t* image, int width, int height, int bitdepth,
                 int readLength, int skipLength,
                 uint16_t* delinearize,int delinearizeLength,
-                uint8_t** encoded, int* encodedLength) {
+                uint8_t** encoded, int* encodedLength, int ljPredictor) {
     int ret = LJ92_ERROR_NONE;
 
     lje* self = (lje*)calloc(sizeof(lje),1);
@@ -1118,6 +1135,7 @@ int lj92_encode(uint16_t* image, int width, int height, int bitdepth,
     self->delinearizeLength = delinearizeLength;
     self->encodedLength = width*height*3+200;
     self->encoded = malloc(self->encodedLength);
+    self->ljPredictor = ljPredictor;
     if (self->encoded==NULL) { free(self); return LJ92_ERROR_NO_MEMORY; }
     // Scan through data to gather frequencies of ssss prefixes
     ret = frequencyScan(self);
