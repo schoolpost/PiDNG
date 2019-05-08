@@ -1031,7 +1031,7 @@ void writeBody(lje* self) {
             Px = rows[0][col] + ((rows[1][col-1] - rows[0][col-1])>>1);
         else
             Px = rows[0][col] + ((rows[1][col-1] - rows[0][col-1])>>1);
-        diff = rows[1][col] - Px;
+        diff = rows[1][col] - Px % 65535;
 
         int ssss = 32 - __builtin_clz(abs(diff));
         if (diff==0) ssss=0;

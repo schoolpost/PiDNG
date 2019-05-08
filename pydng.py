@@ -350,7 +350,7 @@ def parseTag(s):
         return [[int(s), 1]]
 
 
-def process(input_file):
+def process(input_file, shade, dark):
     def extractRAW(img):
         file = open(img, 'rb')
 
@@ -376,7 +376,7 @@ def process(input_file):
 
         data = data.astype(np.uint16) << 2
         for byte in range(4):
-            data[:, byte::5] |= ((data[:, 4::5] >> ((4 - byte) * 2)) & 0b11)
+            data[:, byte::5] |= ((data[:, 4::5] >> ((byte+1) * 2)) & 0b11)
         data = np.delete(data, np.s_[4::5], 1)
 
         return data, tags
@@ -386,12 +386,18 @@ def process(input_file):
     # rawImage = np.rot90(rawImage, 2)
 
     # lens shade frame
-    shading = np.fromfile('shade/shade_sun', dtype=np.uint16)
-    shading = np.reshape(shading, rawImage.shape)
+    if not shade:
+        shading = np.fromfile('shade/shade_sun', dtype=np.uint16)
+        shading = np.reshape(shading, rawImage.shape)
+    else:
+        shading = extractRAW(shade)[0]
 
     # dark frame
-    dark = np.fromfile('dark/dark_frame', dtype=np.uint16)
-    dark = np.reshape(dark, rawImage.shape)
+    if not dark:
+        dark = np.fromfile('dark/dark_frame', dtype=np.uint16)
+        dark = np.reshape(dark, rawImage.shape)
+    else:
+        dark = extractRAW(dark)[0]
 
 
     rawImage[1::2, 0::2] = (rawImage[1::2, 0::2]) - np.mean(dark[1::2, 0::2])
@@ -469,79 +475,16 @@ def blockshaped(arr, nrows, ncols):
                .reshape(-1, nrows, ncols))
 
 
-def convert(inputFilename, width, length, colour, bpp):
+def convert(inputFilename, width, length, colour, bpp, shade, dark):
     dngTemplate = DNG()
 
-    rawFrame, exif = process(inputFilename)
+    rawFrame, exif = process(inputFilename, shade, dark)
     for k,v in etags.items():
         etags[k] = exif[k]
 
-    tw = 656
-    th = 176
-    split = 4
-    sizes = []
-    fs = 0
-    modes= {4:0,5:0,6:0,7:0}
-    tiles = blockshaped(rawFrame, th,tw)
-    for tile in tiles:
-        d = tile.tostring()
-        w = tile.shape[1]
-        h = tile.shape[0]
-        ec = 0
-        oc = 0
-        for n in range(split):
-            if n % 2 == 0:                   # if even row
-                tile1 = bitunpack.pack16tolj(d,w/(split/2),h/2,16,ec,w/split,(split-1)*w/split,"",5)
-                tile2 = bitunpack.pack16tolj(d,w/(split/2),h/2,16,ec,w/split,(split-1)*w/split,"",6)
-                tile3 = bitunpack.pack16tolj(d,w/(split/2),h/2,16,ec,w/split,(split-1)*w/split,"",7)
-                tile4 = bitunpack.pack16tolj(d,w/(split/2),h/2,16,ec,w/split,(split-1)*w/split,"",4)
-                sizes = [(5,len(tile1)), (6,len(tile2)), (7,len(tile3)), (4,len(tile4))]
-                sizes.sort(key=operator.itemgetter(1))
-                if sizes[0][0] == 5:
-                    dngTemplate.ImageDataStrips.append(tile1)
-                    fs+=len(tile1)
-                    modes[5] += 1
-                elif sizes[0][0] == 6:
-                    dngTemplate.ImageDataStrips.append(tile2)
-                    fs+=len(tile2)
-                    modes[6] += 1
-                elif sizes[0][0] == 7:
-                    dngTemplate.ImageDataStrips.append(tile3)
-                    fs+=len(tile3)
-                    modes[7] += 1
-                elif sizes[0][0] == 4:
-                    dngTemplate.ImageDataStrips.append(tile4)
-                    fs+=len(tile4)
-                    modes[4] += 1
-                try:
-                    ec+=w/((split/2)/2)
-                except:
-                    pass
-            if n % 2 == 1:                   # if odd row
-                tile1 = bitunpack.pack16tolj(d,w/(split/2),h/2,16,n*w/(split/2),w/split,(split-1)*w/split,"",5)
-                tile2 = bitunpack.pack16tolj(d,w/(split/2),h/2,16,n*w/(split/2),w/split,(split-1)*w/split,"",6)
-                tile3 = bitunpack.pack16tolj(d,w/(split/2),h/2,16,n*w/(split/2),w/split,(split-1)*w/split,"",7)
-                tile4 = bitunpack.pack16tolj(d,w/(split/2),h/2,16,n*w/(split/2),w/split,(split-1)*w/split,"",4)
-                sizes = [(5,len(tile1)), (6,len(tile2)), (7,len(tile3)), (4,len(tile4))]
-                sizes.sort(key=operator.itemgetter(1))
-                if sizes[0][0] == 5:
-                    dngTemplate.ImageDataStrips.append(tile1)
-                    fs+=len(tile1)
-                    modes[5] += 1
-                elif sizes[0][0] == 6:
-                    dngTemplate.ImageDataStrips.append(tile2)
-                    fs+=len(tile2)
-                    modes[6] += 1
-                elif sizes[0][0] == 7:
-                    dngTemplate.ImageDataStrips.append(tile3)
-                    fs+=len(tile3)
-                    modes[7] += 1
-                elif sizes[0][0] == 4:
-                    dngTemplate.ImageDataStrips.append(tile4)
-                    fs+=len(tile4)
-                    modes[4] += 1
+    tile = bitunpack.pack16tolj(rawFrame,width*2,length/2,10,0,0,0,"",2)
+    dngTemplate.ImageDataStrips.append(tile)
 
-    print(fs, modes)
 
     # set up the FULL IFD
     mainIFD = dngIFD()
@@ -552,9 +495,9 @@ def convert(inputFilename, width, length, colour, bpp):
     mainIFD.tags.append(dngTag(Tag.ImageWidth               , [width]))
     mainIFD.tags.append(dngTag(Tag.ImageLength              , [length]))
     mainIFD.tags.append(dngTag(Tag.SamplesPerPixel          , [1]))
-    mainIFD.tags.append(dngTag(Tag.BitsPerSample            , [16]))
-    mainIFD.tags.append(dngTag(Tag.TileWidth             , [tw/split]))
-    mainIFD.tags.append(dngTag(Tag.TileLength             , [th]))
+    mainIFD.tags.append(dngTag(Tag.BitsPerSample            , [10]))
+    mainIFD.tags.append(dngTag(Tag.TileWidth             , [width]))
+    mainIFD.tags.append(dngTag(Tag.TileLength             , [length]))
     mainIFD.tags.append(dngTag(Tag.Compression              , [7])) 
     mainIFD.tags.append(dngTag(Tag.PhotometricInterpretation, [32803])) 
     mainIFD.tags.append(dngTag(Tag.CFARepeatPatternDim      , [2, 2]))
@@ -569,7 +512,7 @@ def convert(inputFilename, width, length, colour, bpp):
     mainIFD.tags.append(dngTag(Tag.ExposureTime             , parseTag(etags['EXIF ExposureTime'])))
     mainIFD.tags.append(dngTag(Tag.DateTime                 , str(etags['EXIF DateTimeDigitized'])))
     mainIFD.tags.append(dngTag(Tag.PhotographicSensitivity  , [int(str(etags['EXIF ISOSpeedRatings']))] ))
-    mainIFD.tags.append(dngTag(Tag.Software                 , "pydng"))
+    mainIFD.tags.append(dngTag(Tag.Software                 , "PyDNG"))
     mainIFD.tags.append(dngTag(Tag.Orientation              , [1]))
     mainIFD.tags.append(dngTag(Tag.DNGVersion               , [1, 4, 0, 0]))
     mainIFD.tags.append(dngTag(Tag.DNGBackwardVersion       , [1, 2, 0, 0]))
@@ -609,23 +552,25 @@ def main():
     length = 2464
     colour = True
     inputFilename = None
+    shade = None
+    dark = None
     bpp = 16
     
     try:
-        options, args = getopt.getopt(sys.argv[1:], 'CMpw:l:h:',
+        options, args = getopt.getopt(sys.argv[1:], 'CMpw:l:h:s:d:',
             ['help', 'color', 'packed', 'mono', 'width', 'length', 'height', 'oldpack'])
     except getopt.error:
         print 'Error: You tried to use an unknown option.\n\n'
-        print helptext
+        # print helptext
         sys.exit(0)
         
     if len(sys.argv[1:]) == 0:
-        print helptext
+        # print helptext
         sys.exit(0)
-    
+
     for o, a in options:
         if o in ('--help'):
-            print helptext
+            # print helptext
             sys.exit(0)
         
         elif o in ('-l', '-h', '--length', '--height'):
@@ -633,6 +578,12 @@ def main():
 
         elif o in ('-w', '--width'):
             width = int(a)
+
+        elif o in ('-s', '--shade'):
+            shade = str(a)
+        
+        elif o in ('-d', '--dark'):
+            dark = str(a)
 
     if len(args) < 1:
         print helptext
@@ -643,7 +594,7 @@ def main():
     else:
         inputFilename = args[0]
 
-    convert(inputFilename, width, length, colour, bpp)
+    convert(inputFilename, width, length, colour, bpp, shade, dark)
 
 if __name__ == "__main__":
     main()
