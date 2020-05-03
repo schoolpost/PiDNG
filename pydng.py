@@ -1,7 +1,5 @@
-#!/usr/bin/python2.7
-# https://github.com/krontech/chronos-utils/tree/master/python_raw2dng
+#!/usr/bin/python3.7
 
-# standard python imports
 import sys
 import struct
 import os, io
@@ -12,8 +10,35 @@ import platform
 import operator
 import errno
 import numpy as np
-import bitunpack
+import ljpegCompress
 import exifread
+import ctypes
+
+class BroadcomRawHeader(ctypes.Structure):
+    _fields_ = [
+        ('name',          ctypes.c_char * 32),
+        ('width',         ctypes.c_uint16),
+        ('height',        ctypes.c_uint16),
+        ('padding_right', ctypes.c_uint16),
+        ('padding_down',  ctypes.c_uint16),
+        ('dummy',         ctypes.c_uint32 * 6),
+        ('transform',     ctypes.c_uint16),
+        ('format',        ctypes.c_uint16),
+        ('bayer_order',   ctypes.c_uint8),
+        ('bayer_format',  ctypes.c_uint8),
+    ]
+
+BAYER_ORDER = {
+    0: [0, 1, 1, 2],
+    1: [1, 2, 0, 1],
+    2: [2, 1, 1, 0],
+    3: [1, 0, 2, 1],
+}
+
+CAMERA_VERSION = {
+    "RP_ov5647": "Raspberry Pi Camera V1",
+    "RP_imx219": "Raspberry Pi Camera V2",
+}
 
 etags = {
     'EXIF DateTimeDigitized':None, 
@@ -44,12 +69,13 @@ class Type:
     Double = (12,8) # 64bit double IEEE
     IFD = (13,4) # IFD (Same as Long)
 
-Types = [(getattr(Type,n),n) for n in dir(Type) if n!="__doc__" and n!="__module__"]
-Types.sort()
+# Types = [(getattr(Type,n),n) for n in dir(Type) if n!="__doc__" and n!="__module__"]
+# Types.sort()
+
+# print(Types)
 
 class Tag:
     Invalid                     = (0,Type.Invalid)
-    # TIFF/DNG/EXIF/CinemaDNG Tag Format = (TAG value, Tag Type)
     NewSubfileType              = (254,Type.Long)
     ImageWidth                  = (256,Type.Long)
     ImageLength                 = (257,Type.Long)
@@ -163,9 +189,9 @@ class Tag:
 
 IfdNames = [n for n in dir(Tag) if n!="__doc__" and n!="__module__"]
 IfdValues = [getattr(Tag,n) for n in IfdNames]
-IfdIdentifiers = [getattr(Tag,n)[0] for n in IfdNames]
-IfdTypes = [getattr(Tag,n)[1][0] for n in IfdNames]
-IfdLookup = dict(zip(IfdIdentifiers,IfdNames))
+# IfdIdentifiers = [getattr(Tag,n)[0] for n in IfdNames]
+# IfdTypes = [getattr(Tag,n)[1][0] for n in IfdNames]
+# IfdLookup = dict(zip(IfdIdentifiers,IfdNames))
 
 class dngHeader(object):
     def __init__(self):
@@ -184,7 +210,6 @@ class dngTag(object):
 
         self.subIFD = None
         
-        # encode the given data
         self.setValue(value)
         
         self.DataLength = len(self.Value)
@@ -202,15 +227,15 @@ class dngTag(object):
         elif self.DataType == Type.Slong:     self.Value = struct.pack('<%sl' % len(value), *value)
         elif self.DataType == Type.Float:     self.Value = struct.pack('<%sf' % len(value), *value)
         elif self.DataType == Type.Double:    self.Value = struct.pack('<%sd' % len(value), *value)
-        elif self.DataType == Type.Rational:  self.Value = struct.pack('<%sL' % (len(value)*2), *[item for sublist in value for item in sublist]) # ... This... uhm... flattens the list of two value pairs
+        elif self.DataType == Type.Rational:  self.Value = struct.pack('<%sL' % (len(value)*2), *[item for sublist in value for item in sublist])
         elif self.DataType == Type.Srational: self.Value = struct.pack('<%sl' % (len(value)*2), *[item for sublist in value for item in sublist])
         elif self.DataType == Type.Ascii:
-            self.Value = struct.pack('<%scx0L' % len(value), *value)
+            self.Value = struct.pack('<%ssx0L' % len(value), bytearray(value.encode("ascii")))
             self.DataCount += 1
         elif self.DataType == Type.IFD:
             self.Value = "\x00\x00\x00\x00"
             self.subIFD = value[0]
-        self.Value += '\x00'*(((len(self.Value)+3) & 0xFFFFFFFC) - len(self.Value))
+        self.Value += str.encode('\x00'*(((len(self.Value)+3) & 0xFFFFFFFC) - len(self.Value)))
         
 
     def setBuffer(self, buf, tagOffset, dataOffset):
@@ -218,7 +243,6 @@ class dngTag(object):
         self.TagOffset = tagOffset
         self.DataOffset = dataOffset
         if self.subIFD:
-            #print "subIDF: 0x%08X, 0x%08X" % (self.TagOffset, self.DataOffset)
             self.subIFD.setBuffer(buf, self.DataOffset)
             
     def dataLen(self):
@@ -232,9 +256,6 @@ class dngTag(object):
     def write(self):
         if not self.buf:
             raise RuntimeError("buffer not initialized")
-
-        #if not self.subIFD:
-        #    print "Tag: %04X - 0x%08X, 0x%08X - %-30s %s" % (self.TagId, self.TagOffset, self.DataOffset, IfdLookup.get(self.TagId,"Unknown"), self.Value.encode('hex'))
         
         if self.subIFD:
             self.subIFD.write()
@@ -282,7 +303,6 @@ class dngIFD(object):
         for tag in sorted(self.tags, key=lambda x: x.TagId):
             tag.write()
 
-        #print "IDF: 0x%08X" % (self.offset)
         struct.pack_into("<I", self.buf, self.offset + 2 + len(self.tags)*12, self.NextIFDOffset)
 
 
@@ -315,7 +335,7 @@ class DNG(object):
         return (totalLength + 3) & 0xFFFFFFFC
 
     def write(self):
-        struct.pack_into("<ccbbI", self.buf, 0, 'I', 'I', 0x2A, 0x00, 8) # assume the first IFD happens immediately after header
+        struct.pack_into("<ccbbI", self.buf, 0, b'I', b'I', 0x2A, 0x00, 8) # assume the first IFD happens immediately after header
 
         for ifd in self.IFDs:
             ifd.write()
@@ -337,8 +357,6 @@ def creation_date(path_to_file):
         try:
             return stat.st_birthtime
         except AttributeError:
-            # We're probably on Linux. No easy way to get creation dates here,
-            # so we'll settle for when its content was last modified.
             return stat.st_mtime
 
 def parseTag(s):
@@ -350,101 +368,113 @@ def parseTag(s):
         return [[int(s), 1]]
 
 
+def extractRAW(img):
+    file = open(img, 'rb')
+
+    tags = exifread.process_file(file)
+    stream = io.BytesIO(file.read())
+
+    ver = {
+    'RP_ov5647': 1,
+    'RP_imx219': 2,
+    }[str(tags['Image Model'])]
+
+    offset = {
+        1: 6404096,
+        2: 10270208,
+    }[ver]
+
+
+    data = stream.getvalue()[-offset:]
+    # assert data[:4] == 'BRCM'
+
+    header = BroadcomRawHeader.from_buffer_copy(data[176:176 + ctypes.sizeof(BroadcomRawHeader)])
+
+    data = data[32768:]
+    data = np.frombuffer(data, dtype=np.uint8)
+
+    reshape, crop = {
+        1: ((1952, 3264), (1944, 3240)),
+        2: ((2480, 4128), (2464, 4100)),
+    }[ver]
+    data = data.reshape(reshape)[:crop[0], :crop[1]]
+
+    data = data.astype(np.uint16) << 2
+    for byte in range(4):
+        data[:, byte::5] |= ((data[:, 4::5] >> ((byte+1) * 2)) & 0b11)
+    data = np.delete(data, np.s_[4::5], 1)
+
+    return data, tags, header
+
+
 def process(input_file, shade, dark):
-    def extractRAW(img):
-        file = open(img, 'rb')
-
-        tags = exifread.process_file(file)
-        stream = io.BytesIO(file.read())
-
-        ver = 2
-        offset = {
-            1: 6404096,
-            2: 10270208,
-        }[2]
-
-        data = stream.getvalue()[-offset:]
-        # assert data[:4] == 'BRCM'
-        data = data[32768:]
-        data = np.fromstring(data, dtype=np.uint8)
-
-        reshape, crop = {
-            1: ((1952, 3264), (1944, 3240)),
-            2: ((2480, 4128), (2464, 4100)),
-        }[ver]
-        data = data.reshape(reshape)[:crop[0], :crop[1]]
-
-        data = data.astype(np.uint16) << 2
-        for byte in range(4):
-            data[:, byte::5] |= ((data[:, 4::5] >> ((byte+1) * 2)) & 0b11)
-        data = np.delete(data, np.s_[4::5], 1)
-
-        return data, tags
 
     # extract bayer raw to 16bit numpy array
-    rawImage, tags = extractRAW(input_file)
-    # rawImage = np.rot90(rawImage, 2)
+    rawImage, tags, header = extractRAW(input_file)
 
-    # lens shade frame
-    if not shade:
-        shading = np.fromfile('shade/shade_sun', dtype=np.uint16)
-        shading = np.reshape(shading, rawImage.shape)
-    else:
-        shading = extractRAW(shade)[0]
+    processing = False
 
-    # dark frame
-    if not dark:
-        dark = np.fromfile('dark/dark_frame', dtype=np.uint16)
-        dark = np.reshape(dark, rawImage.shape)
-    else:
-        dark = extractRAW(dark)[0]
+    if processing:
+
+        # lens shade frame
+        if not shade:
+            shading = np.fromfile('shade/shade_sun', dtype=np.uint16)
+            shading = np.reshape(shading, rawImage.shape)
+        else:
+            shading = extractRAW(shade)[0]
+
+        # dark frame
+        if not dark:
+            dark = np.fromfile('dark/dark_frame', dtype=np.uint16)
+            dark = np.reshape(dark, rawImage.shape)
+        else:
+            dark = extractRAW(dark)[0]
 
 
-    rawImage[1::2, 0::2] = (rawImage[1::2, 0::2]) - np.mean(dark[1::2, 0::2])
-    rawImage[0::2, 0::2] = (rawImage[0::2, 0::2]) - np.mean(dark[0::2, 0::2])
-    rawImage[1::2, 1::2] = (rawImage[1::2, 1::2]) - np.mean(dark[1::2, 1::2])
-    rawImage[0::2, 1::2] = (rawImage[0::2, 1::2]) - np.mean(dark[0::2, 1::2])
+        rawImage[1::2, 0::2] = (rawImage[1::2, 0::2]) - np.mean(dark[1::2, 0::2])
+        rawImage[0::2, 0::2] = (rawImage[0::2, 0::2]) - np.mean(dark[0::2, 0::2])
+        rawImage[1::2, 1::2] = (rawImage[1::2, 1::2]) - np.mean(dark[1::2, 1::2])
+        rawImage[0::2, 1::2] = (rawImage[0::2, 1::2]) - np.mean(dark[0::2, 1::2])
 
-    shading[1::2, 0::2] = shading[1::2, 0::2] - np.mean(dark[1::2, 0::2])
-    shading[0::2, 0::2] = shading[0::2, 0::2] - np.mean(dark[0::2, 0::2])
-    shading[1::2, 1::2] = shading[1::2, 1::2] - np.mean(dark[1::2, 1::2])
-    shading[0::2, 1::2] = shading[0::2, 1::2] - np.mean(dark[0::2, 1::2])
+        shading[1::2, 0::2] = shading[1::2, 0::2] - np.mean(dark[1::2, 0::2])
+        shading[0::2, 0::2] = shading[0::2, 0::2] - np.mean(dark[0::2, 0::2])
+        shading[1::2, 1::2] = shading[1::2, 1::2] - np.mean(dark[1::2, 1::2])
+        shading[0::2, 1::2] = shading[0::2, 1::2] - np.mean(dark[0::2, 1::2])
 
-    rawImage = rawImage.astype(np.uint16)
-    shading = shading.astype(np.uint16)
+        rawImage = rawImage.astype(np.uint16)
+        shading = shading.astype(np.uint16)
 
-    temp = np.zeros(rawImage.shape, dtype=np.uint16)
-    temp[1::2, 0::2] = rawImage[1::2, 0::2] * ( np.mean(shading[1::2, 0::2]) / shading[1::2, 0::2] ) #RED
-    temp[0::2, 0::2] = rawImage[0::2, 0::2] * ( np.mean(shading[0::2, 0::2]) / shading[0::2, 0::2] ) #GREEN
-    temp[1::2, 1::2] = rawImage[1::2, 1::2] * ( np.mean(shading[1::2, 1::2]) / shading[1::2, 1::2] ) #GREEN
-    temp[0::2, 1::2] = rawImage[0::2, 1::2] * ( np.mean(shading[0::2, 1::2]) / shading[0::2, 1::2] ) #BLUE
+        temp = np.zeros(rawImage.shape, dtype=np.uint16)
+        temp[1::2, 0::2] = rawImage[1::2, 0::2] * ( np.mean(shading[1::2, 0::2]) / shading[1::2, 0::2] ) #RED
+        temp[0::2, 0::2] = rawImage[0::2, 0::2] * ( np.mean(shading[0::2, 0::2]) / shading[0::2, 0::2] ) #GREEN
+        temp[1::2, 1::2] = rawImage[1::2, 1::2] * ( np.mean(shading[1::2, 1::2]) / shading[1::2, 1::2] ) #GREEN
+        temp[0::2, 1::2] = rawImage[0::2, 1::2] * ( np.mean(shading[0::2, 1::2]) / shading[0::2, 1::2] ) #BLUE
 
-    rawImage = temp.astype(np.uint16)
+        rawImage = temp.astype(np.uint16)
 
-    raw_r = rawImage[1::2, 0::2]
-    raw_b = rawImage[0::2, 1::2]
-    raw_g = ((rawImage[0::2, 0::2] + rawImage[1::2, 1::2])/2).astype(np.uint16)
+        raw_r = rawImage[1::2, 0::2]
+        raw_b = rawImage[0::2, 1::2]
+        raw_g = ((rawImage[0::2, 0::2] + rawImage[1::2, 1::2])/2).astype(np.uint16)
 
-    # [1::2, 0::2] #RED
-    # [0::2, 0::2] #GREEN 
-    # [1::2, 1::2] #GREEN
-    # [0::2, 1::2] #BLUE
+        # [1::2, 0::2] #RED
+        # [0::2, 0::2] #GREEN 
+        # [1::2, 1::2] #GREEN
+        # [0::2, 1::2] #BLUE
 
-    r_pm = np.amax(raw_r).astype(np.uint16)
-    b_pm = np.amax(raw_b).astype(np.uint16)
-    g_pm = np.amax(raw_g).astype(np.uint16)
+        r_pm = np.amax(raw_r).astype(np.uint16)
+        b_pm = np.amax(raw_b).astype(np.uint16)
+        g_pm = np.amax(raw_g).astype(np.uint16)
 
-    pm = np.array([r_pm, g_pm, b_pm])
+        pm = np.array([r_pm, g_pm, b_pm])
 
-    if np.amin(pm) < 1023:
-        rawImage = np.clip(rawImage, 0, np.amin(pm))
-    else:
-        rawImage = np.clip(rawImage, 0, 1023)
+        if np.amin(pm) < 1023:
+            rawImage = np.clip(rawImage, 0, np.amin(pm))
+        else:
+            rawImage = np.clip(rawImage, 0, 1023)
 
-    rawImage = rawImage.astype(np.uint16)
-    # rawImage = extractRAW(input_file)
-    # rawImage = np.rot90(rawImage,2)
-    return rawImage, tags
+        rawImage = rawImage.astype(np.uint16)
+
+    return rawImage, tags, header
 
 
 def pack10(data):
@@ -475,17 +505,27 @@ def blockshaped(arr, nrows, ncols):
                .reshape(-1, nrows, ncols))
 
 
-def convert(inputFilename, width, length, colour, bpp, shade, dark):
+def convert(inputFilename, width=None, length=None, shade=None, dark=None):
+
     dngTemplate = DNG()
 
-    rawFrame, exif = process(inputFilename, shade, dark)
+    rawFrame, exif, header = process(inputFilename, shade, dark)
     for k,v in etags.items():
         etags[k] = exif[k]
+    
+    if not width:
+        width = int(str(exif['Image ImageWidth']))
+    if not length:
+        length  = int(str(exif['Image ImageLength']))
 
-    tile = bitunpack.pack16tolj(rawFrame,width*2,length/2,10,0,0,0,"",2)
+    tile = ljpegCompress.pack16tolj(rawFrame,int(width*2),int(length/2),10,0,0,0,"",2)
     dngTemplate.ImageDataStrips.append(tile)
 
+    print(len(tile))
 
+    cfa_pattern = BAYER_ORDER[header.bayer_order]
+    camera_version  = CAMERA_VERSION[str(etags['Image Model'])]
+    
     # set up the FULL IFD
     mainIFD = dngIFD()
     mainTagStripOffset = dngTag(Tag.TileOffsets, [0 for tile in dngTemplate.ImageDataStrips])
@@ -501,7 +541,7 @@ def convert(inputFilename, width, length, colour, bpp, shade, dark):
     mainIFD.tags.append(dngTag(Tag.Compression              , [7])) 
     mainIFD.tags.append(dngTag(Tag.PhotometricInterpretation, [32803])) 
     mainIFD.tags.append(dngTag(Tag.CFARepeatPatternDim      , [2, 2]))
-    mainIFD.tags.append(dngTag(Tag.CFAPattern               , [2, 1, 1, 0]))
+    mainIFD.tags.append(dngTag(Tag.CFAPattern               , cfa_pattern))
     mainIFD.tags.append(dngTag(Tag.BlackLevel               , [np.amin(rawFrame)]))
     mainIFD.tags.append(dngTag(Tag.WhiteLevel               , [np.amax(rawFrame)]))
     mainIFD.tags.append(dngTag(Tag.Make                     , str(etags['Image Make'])))
@@ -516,7 +556,7 @@ def convert(inputFilename, width, length, colour, bpp, shade, dark):
     mainIFD.tags.append(dngTag(Tag.Orientation              , [1]))
     mainIFD.tags.append(dngTag(Tag.DNGVersion               , [1, 4, 0, 0]))
     mainIFD.tags.append(dngTag(Tag.DNGBackwardVersion       , [1, 2, 0, 0]))
-    mainIFD.tags.append(dngTag(Tag.UniqueCameraModel        , "RaspberryPi Camera V2"))
+    mainIFD.tags.append(dngTag(Tag.UniqueCameraModel        , camera_version))
     mainIFD.tags.append(dngTag(Tag.ColorMatrix1             , [[19549, 10000], [-7877, 10000], [-2582, 10000],	
                                                                [-5724, 10000], [10121, 10000], [1917, 10000],
                                                                [-1267, 10000], [ -110, 10000], [ 6621, 10000]]))
@@ -532,7 +572,6 @@ def convert(inputFilename, width, length, colour, bpp, shade, dark):
     dngTemplate.IFDs.append(mainIFD)
 
     totalLength = dngTemplate.dataLen()
-    # this must happen after dataLen is calculated! (dataLen caches the offsets)
 
     mainTagStripOffset.setValue([k for offset,k in dngTemplate.StripOffsets.items()])
 
@@ -548,29 +587,25 @@ def convert(inputFilename, width, length, colour, bpp, shade, dark):
 
 
 def main():
-    width = 3280
-    length = 2464
-    colour = True
+
     inputFilename = None
+    width = None
+    length = None
     shade = None
     dark = None
-    bpp = 16
     
     try:
         options, args = getopt.getopt(sys.argv[1:], 'CMpw:l:h:s:d:',
             ['help', 'color', 'packed', 'mono', 'width', 'length', 'height', 'oldpack'])
     except getopt.error:
-        print 'Error: You tried to use an unknown option.\n\n'
-        # print helptext
+        print('Error: You tried to use an unknown option.\n\n')
         sys.exit(0)
         
     if len(sys.argv[1:]) == 0:
-        # print helptext
         sys.exit(0)
 
     for o, a in options:
         if o in ('--help'):
-            # print helptext
             sys.exit(0)
         
         elif o in ('-l', '-h', '--length', '--height'):
@@ -586,7 +621,7 @@ def main():
             dark = str(a)
 
     if len(args) < 1:
-        print helptext
+        print(helptext)
         sys.exit(0)
 
     elif len(args) == 1:
@@ -594,10 +629,12 @@ def main():
     else:
         inputFilename = args[0]
 
-    convert(inputFilename, width, length, colour, bpp, shade, dark)
+    convert(inputFilename, width, length, shade, dark)
 
 if __name__ == "__main__":
+    start_time = time.time()
     main()
+    print("--- %s seconds ---" % (time.time() - start_time))
 
         
         
