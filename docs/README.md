@@ -2,26 +2,46 @@ PYDNG V3.0
 =========
 Latest Release
 
-Python based Adobe DNG RAW Converter. Tuned for use with the Raspberry Pi Camera. 
-Convert raw bayer data from raw containing .jpgs from the Raspberry Pi Camera V2 ( SonyIMX219 ) into DNG files.
+Create Adobe DNG RAW files using Python3. Developed primilariy for use with Raspberry Pi Camera Modules. ( JPEG+RAW Mode )
 
-Requires: Python3, Numpy and ExifRead
+### Works with:
+- OV5467 ( Raspberry Pi Camera Module V1 )
+- IMX219 ( Raspberry Pi Camera Module V2 )
+- IMX477( Raspberry Pi High Quality Camera )
 
 ![](https://github.com/schoolpost/pydng/blob/master/docs/demo.jpg?raw=true)
 
 Instructions
 ------------
+
+Requires: 
+- Python3 
+- Numpy  
+- ExifRead
+
+
+
 ```
-python setup.py build
+#install 
+pip install  src/.
 
-python pydng.py <options> <inputFilename> 
+#examples
+Usage:
+  from pydng.core import RPICAM2DNG
 
-Options:
- -w/--width  Frame width
- -l/--length Frame length
+  d = RPICAM2DNG()
 
-Examples:
-  python pydng.py color.jpg
+  # example using a stream
+  output = d.convert(stream)
+
+  # example using a file string input
+  d.convert('color.jpg')
+
+
+Utility.py:
+  python examples/utility.py <options> <inputFilename> 
+  python examples/utility.py color.jpg  
+
 ```
 
 TODO
@@ -29,14 +49,12 @@ TODO
 
 -Apply calibrated color matrix values 
 
--Map or remove Bad pixels
-
--Automated calibration script to let users generate dark/shade/pxl from input images
-
 
 Credits
 ------------
 Source referenced from:
+
+Waveform80 | [picamera](https://github.com/waveform80/picamera)
 
 Krontech | [chronos-utils](https://github.com/krontech/chronos-utils)
 
