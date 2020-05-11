@@ -23,7 +23,7 @@ Requires:
 
 ```
 #install 
-pip install  src/.
+pip install src/.
 
 #examples
 Usage:
