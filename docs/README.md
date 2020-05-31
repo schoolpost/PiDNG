@@ -1,15 +1,14 @@
 PYDNG V3.0
 =========
-Latest Release
 
 Create Adobe DNG RAW files using Python3. Developed primilariy for use with Raspberry Pi Camera Modules. ( JPEG+RAW Mode )
+
+![](demo.jpg)
 
 ### Works with:
 - OV5467 ( Raspberry Pi Camera Module V1 )
 - IMX219 ( Raspberry Pi Camera Module V2 )
 - IMX477( Raspberry Pi High Quality Camera )
-
-![](https://github.com/schoolpost/pydng/blob/master/docs/demo.jpg?raw=true)
 
 Instructions
 ------------
