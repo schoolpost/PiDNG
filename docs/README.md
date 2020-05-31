@@ -9,7 +9,7 @@ Create Adobe DNG RAW files using Python3. Developed primilariy for use with Rasp
 - IMX219 ( Raspberry Pi Camera Module V2 )
 - IMX477( Raspberry Pi High Quality Camera )
 
-![](https://github.com/schoolpost/pydng/blob/master/docs/demo.jpg?raw=true)
+![](https://github.com/schoolpost/pydng/blob/master/docs/demo.png?raw=true)
 
 Instructions
 ------------
