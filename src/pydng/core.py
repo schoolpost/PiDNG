@@ -195,56 +195,13 @@ class RPICAM2DNG:
         rawImage = self.__extractRAW__(input_file)
 
         if processing:
-
-            if self.shade:
-                shading = self.__extractRAW__(self.shade)
-                
-            if self.dark:
-                dark = self.__extractRAW__(self.dark)
-
-
-            rawImage[1::2, 0::2] = (rawImage[1::2, 0::2]) - np.mean(dark[1::2, 0::2])
-            rawImage[0::2, 0::2] = (rawImage[0::2, 0::2]) - np.mean(dark[0::2, 0::2])
-            rawImage[1::2, 1::2] = (rawImage[1::2, 1::2]) - np.mean(dark[1::2, 1::2])
-            rawImage[0::2, 1::2] = (rawImage[0::2, 1::2]) - np.mean(dark[0::2, 1::2])
-
-            shading[1::2, 0::2] = shading[1::2, 0::2] - np.mean(dark[1::2, 0::2])
-            shading[0::2, 0::2] = shading[0::2, 0::2] - np.mean(dark[0::2, 0::2])
-            shading[1::2, 1::2] = shading[1::2, 1::2] - np.mean(dark[1::2, 1::2])
-            shading[0::2, 1::2] = shading[0::2, 1::2] - np.mean(dark[0::2, 1::2])
-
-            rawImage = rawImage.astype(np.uint16)
-            shading = shading.astype(np.uint16)
-
-            temp = np.zeros(rawImage.shape, dtype=np.uint16)
-            temp[1::2, 0::2] = rawImage[1::2, 0::2] * ( np.mean(shading[1::2, 0::2]) / shading[1::2, 0::2] ) #RED
-            temp[0::2, 0::2] = rawImage[0::2, 0::2] * ( np.mean(shading[0::2, 0::2]) / shading[0::2, 0::2] ) #GREEN
-            temp[1::2, 1::2] = rawImage[1::2, 1::2] * ( np.mean(shading[1::2, 1::2]) / shading[1::2, 1::2] ) #GREEN
-            temp[0::2, 1::2] = rawImage[0::2, 1::2] * ( np.mean(shading[0::2, 1::2]) / shading[0::2, 1::2] ) #BLUE
-
-            rawImage = temp.astype(np.uint16)
-
-            raw_r = rawImage[1::2, 0::2]
-            raw_b = rawImage[0::2, 1::2]
-            raw_g = ((rawImage[0::2, 0::2] + rawImage[1::2, 1::2])/2).astype(np.uint16)
+            
+            pass
 
             # [1::2, 0::2] #RED
             # [0::2, 0::2] #GREEN 
             # [1::2, 1::2] #GREEN
             # [0::2, 1::2] #BLUE
-
-            r_pm = np.amax(raw_r).astype(np.uint16)
-            b_pm = np.amax(raw_b).astype(np.uint16)
-            g_pm = np.amax(raw_g).astype(np.uint16)
-
-            pm = np.array([r_pm, g_pm, b_pm])
-
-            if np.amin(pm) < 1023:
-                rawImage = np.clip(rawImage, 0, np.amin(pm))
-            else:
-                rawImage = np.clip(rawImage, 0, 1023)
-
-            rawImage = rawImage.astype(np.uint16)
 
         return rawImage
 
@@ -267,9 +224,9 @@ class RPICAM2DNG:
             self.etags[k] = self.__exif__[k]
         
         if not width:
-            width = int(str(self.__exif__['Image ImageWidth']))
+            width = int(self.header.width)
         if not length:
-            length  = int(str(self.__exif__['Image ImageLength']))
+            length  = int(self.header.height)
 
         cfa_pattern = BAYER_ORDER[self.header.bayer_order]
         camera_version  = CAMERA_VERSION[str(self.etags['Image Model'])]
