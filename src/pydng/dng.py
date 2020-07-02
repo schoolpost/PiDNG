@@ -49,6 +49,7 @@ class Tag:
     Software                    = (305,Type.Ascii)
     DateTime                    = (306,Type.Ascii)
     Artist                      = (315,Type.Ascii)
+    Predictor                   = (317,Type.Short)
     TileWidth                   = (322,Type.Short)
     TileLength                  = (323,Type.Short)
     TileOffsets                 = (324,Type.Long)
