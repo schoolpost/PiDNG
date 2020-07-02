@@ -131,14 +131,14 @@ class RPICAM2DNG:
         self.maker_note = None
         self.etags = {
                     'EXIF DateTimeDigitized':None, 
-                    'EXIF FocalLength':None, 
-                    'EXIF ExposureTime':None, 
-                    'EXIF ISOSpeedRatings':None, 
-                    'EXIF ApertureValue':None, 
-                    'EXIF ShutterSpeedValue':None, 
-                    'Image Model':None, 
-                    'Image Make':None, 
-                    'EXIF WhiteBalance':None 
+                    'EXIF FocalLength':0, 
+                    'EXIF ExposureTime':0, 
+                    'EXIF ISOSpeedRatings':0, 
+                    'EXIF ApertureValue':0, 
+                    'EXIF ShutterSpeedValue':0, 
+                    'Image Model':"", 
+                    'Image Make':"", 
+                    'EXIF WhiteBalance':0 
                     }
     
     def __extractRAW__(self, img):
@@ -154,12 +154,8 @@ class RPICAM2DNG:
         if isfile:
             file = open(img, 'rb')
             img = io.BytesIO(file.read())
-            maker_note = img.getvalue()[0x246:0x39c].decode()
-            file.seek(0)
-            self.__exif__ = exifread.process_file(file)
+            self.__exif__ = exifread.process_file(img)
         else:
-            img.seek(0)
-            maker_note = str(img.getvalue()[0x246:0x3cf])
             img.seek(0)
             self.__exif__ = exifread.process_file(img)
 
@@ -176,7 +172,7 @@ class RPICAM2DNG:
             3: 18711040,
         }[ver]
         
-        self.maker_note = parseMaker(maker_note)
+        self.maker_note = parseMaker(bytearray(self.__exif__['EXIF MakerNote'].values).decode())
         
         data = img.getvalue()[-offset:]
         assert data[:4] == 'BRCM'.encode("ascii")
@@ -239,8 +235,11 @@ class RPICAM2DNG:
 
         rawFrame = self.__process__(image, process)
         for k,v in self.etags.items():
-            self.etags[k] = self.__exif__[k]
-        
+            try:
+                self.etags[k] = self.__exif__[k]
+            except KeyError:
+                self.etags[k] = 0
+
         if not width:
             width = int(self.header.width)
         if not length:
@@ -257,7 +256,6 @@ class RPICAM2DNG:
         sensor_white = (1 << bpp) - 1
         
         
-
         if str(self.etags['Image Model']) == 'RP_testc':
             
             as_shot_neutral = [[3257,1000],[1000,1000],[1652,1000]]
