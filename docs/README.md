@@ -1,4 +1,4 @@
-PYDNG V3.0
+PYDNG V3.1.0
 =========
 
 Create Adobe DNG RAW files using Python3. Developed primilariy for use with Raspberry Pi Camera Modules. ( JPEG+RAW Mode )

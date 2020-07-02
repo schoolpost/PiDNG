@@ -13,6 +13,7 @@ import numpy as np
 from ljpegCompress import pack16tolj
 import exifread
 import ctypes
+import zlib
 
 from .dng import Type, Tag, dngHeader, dngIFD, dngTag, DNG
 
@@ -109,13 +110,25 @@ def blockshaped(arr, nrows, ncols):
     return (arr.reshape(h//nrows, nrows, -1, ncols)
                .swapaxes(1,2)
                .reshape(-1, nrows, ncols))
-
+    
+def parseMaker(s):
+    d = dict()
+    d['unk'] = list()
+    for param in s.split(" "):
+        if "=" in param:
+            d[param.split("=")[0]] = param.split("=")[1]
+        else:
+            d["unk"].append(param)
+    return d
+            
+            
 class RPICAM2DNG:
     def __init__(self, dark=None, shade=None):
         self.dark = dark
         self.shade = shade
         self.header = None
         self.__exif__ = None
+        self.maker_note = None
         self.etags = {
                     'EXIF DateTimeDigitized':None, 
                     'EXIF FocalLength':None, 
@@ -140,9 +153,13 @@ class RPICAM2DNG:
             raise ValueError
         if isfile:
             file = open(img, 'rb')
-            self.__exif__ = exifread.process_file(file)
             img = io.BytesIO(file.read())
+            maker_note = img.getvalue()[0x246:0x39c].decode()
+            file.seek(0)
+            self.__exif__ = exifread.process_file(file)
         else:
+            img.seek(0)
+            maker_note = str(img.getvalue()[0x246:0x3cf])
             img.seek(0)
             self.__exif__ = exifread.process_file(img)
 
@@ -158,8 +175,9 @@ class RPICAM2DNG:
             2: 10270208,
             3: 18711040,
         }[ver]
-
-
+        
+        self.maker_note = parseMaker(maker_note)
+        
         data = img.getvalue()[-offset:]
         assert data[:4] == 'BRCM'.encode("ascii")
     
@@ -178,15 +196,15 @@ class RPICAM2DNG:
         if ver < 3:
             data = data.astype(np.uint16) << 2
             for byte in range(4):
-                data[:, byte::5] |= ((data[:, 4::5] >> ((byte+1) * 2)) & 0b11)
+                data[:, byte::5] |= ((data[:, 4::5] >> ((4 - byte) * 2)) & 0b11)
             data = np.delete(data, np.s_[4::5], 1)
         else:
             data = data.astype(np.uint16)
-            data[:, 0::3] = data[:, 0::3] << 4
-            data[:, 0::3] |= ((data[:, 1::3] >> 4) & 0x0f)
-            data[:, 1::3] = data[:, 1::3] << 4
-            data[:, 1::3] |= (data[:, 1::3] & 0x0f)
-            data = np.delete(data, np.s_[2::3], 1)
+            shape = data.shape
+            unpacked_data = np.zeros((shape[0], int(shape[1] / 3 * 2)), dtype=np.uint16)
+            unpacked_data[:, ::2] = (data[:, ::3] << 4) + (data[:, 2::3] & 0x0F)
+            unpacked_data[:, 1::2] = (data[:, 1::3] << 4) + ((data[:, 2::3] >> 4) & 0x0F)
+            data = unpacked_data
 
         return data
     
@@ -237,10 +255,12 @@ class RPICAM2DNG:
 
         sensor_black = 4096 >> (16 - bpp)
         sensor_white = (1 << bpp) - 1
+        
+        
 
         if str(self.etags['Image Model']) == 'RP_testc':
-
-            as_shot_neutral = [[3108,10000],[10000,10000],[6687,10000]]
+            
+            as_shot_neutral = [[3257,1000],[1000,1000],[1652,1000]]
 
             ccm1 = [[16804, 10000], [-9787, 10000], [-2259, 10000],	
                     [-3295, 10000], [13660, 10000], [-113, 10000],
@@ -253,16 +273,6 @@ class RPICAM2DNG:
             ci1 = 17
             ci2 = 21
 
-            # ccm2 = [[198691, 100000], [-84671, 100000], [-14019, 100000],	
-            #         [-26581, 100000], [170615, 100000], [-44035, 100000],
-            #         [-9532, 100000], [ -47332, 100000], [156864, 100000]]
-
-            # ccm1 = [[178373, 100000], [-55344, 100000], [-23029, 100000],	
-            #         [-39951, 100000], [169701, 100000], [-29751, 100000],
-            #         [1986, 100000], [ -106525, 100000], [204539, 100000]]
-
-            # ci1 = 17
-            # ci2 = 20
         else:
             as_shot_neutral = [[10043,10000],[16090,10000],[10000,10000]]
 
@@ -275,6 +285,12 @@ class RPICAM2DNG:
                     [-270, 10000], [ -1083, 10000], [ 4366, 10000]]
             ci1 = 1
             ci2 = 23
+                
+        if self.maker_note:
+            gain_r = int(float(self.maker_note['gain_r'])*1000)
+            gain_b = int(float(self.maker_note['gain_b'])*1000)
+
+            as_shot_neutral = [[1000,gain_r],[1,1],[1000,gain_b]]
 
         compression_scheme = 7 if compress else 1
 
@@ -298,6 +314,7 @@ class RPICAM2DNG:
                 tile = pack14(rawFrame).tobytes()
             elif bpp == 16:
                 tile = rawFrame.tobytes()
+        
        
         dngTemplate.ImageDataStrips.append(tile)
         # set up the FULL IFD
@@ -349,7 +366,7 @@ class RPICAM2DNG:
         dngTemplate.write()
 
         if file_output:
-            outputDNG = image.strip('.jpg') + '.dng'
+            outputDNG = image[:-4] + '.dng'
             outfile = open(outputDNG, "wb")
             outfile.write(buf)
             outfile.close()
