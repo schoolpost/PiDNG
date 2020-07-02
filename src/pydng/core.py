@@ -10,7 +10,7 @@ import platform
 import operator
 import errno
 import numpy as np
-from ljpegCompress import pack16tolj
+from ljpegCompress import pack16tolj, unpackljto16
 import exifread
 import ctypes
 import zlib
@@ -297,7 +297,7 @@ class RPICAM2DNG:
         tiles = list()
 
         if compress:
-            tile = pack16tolj(rawFrame,int(width*2),int(length/2),bpp,0,0,0,"",2)
+            tile = pack16tolj(rawFrame,int(width*2),int(length/2),bpp,0,0,0,"",6)
         else:
             if (bpp - sensor_bpp) >= 0:
                 rawFrame = rawFrame << (bpp - sensor_bpp)
