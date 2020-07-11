@@ -9,6 +9,7 @@ import getopt
 import platform
 import operator
 import errno
+import types
 import numpy as np
 from ljpegCompress import pack16tolj, unpackljto16
 import exifread
@@ -53,7 +54,6 @@ SENSOR_NATIVE_BPP = {
     "RP_imx477": 12,
     "imx477": 12
 }
-
 
 def parseTag(s):
     s = str(s)
@@ -206,36 +206,42 @@ class RPICAM2DNG:
             data = unpacked_data
 
         return data
-    
+        
     def __process__(self, input_file, processing):
 
         rawImage = self.__extractRAW__(input_file)
-
-        if processing:
+        
+        if not processing:
+            return rawImage
             
-            pass
-
-            # [1::2, 0::2] #RED
-            # [0::2, 0::2] #GREEN 
-            # [1::2, 1::2] #GREEN
-            # [0::2, 1::2] #BLUE
-
-        return rawImage
+        elif isinstance(processing, types.FunctionType):
+                        
+            processed = processing(rawImage)
+            if not isinstance(processed, np.ndarray):
+                raise TypeError("return value is not a valid numpy array!")
+            elif processed.shape != rawImage.shape:
+                raise ValueError("return array does not have the same shape!")
+            if processed.dtype != np.uint16:
+                raise ValueError("array data type is invalid!")
+            
+            return processed
+            
+        else:
+            raise TypeError("process arguement is not a valid function!")
 
     
-    def convert(self, image, width=None, length=None, process=False, compress=True, maxCompress=False, bpp=None):
+    def convert(self, image, width=None, length=None, process=None, compress=False, bpp=None):
         dngTemplate = DNG()
 
         file_output = False
-
+        
         if isinstance(image, str):
             file_output = True
         elif isinstance(image, io.BytesIO):
             file_output = False
         else:
             raise ValueError
-
-
+        
         rawFrame = self.__process__(image, process)
         for k,v in self.etags.items():
             try:
@@ -313,8 +319,6 @@ class RPICAM2DNG:
             as_shot_neutral = [[1000,gain_r],[1000,1000],[1000,gain_b]]
 
         compression_scheme = 7 if compress else 1
-
-        tiles = list()
 
         if compress:
             tile = pack16tolj(rawFrame,int(width*2),int(length/2),bpp,0,0,0,"",6)
