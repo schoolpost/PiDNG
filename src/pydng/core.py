@@ -262,7 +262,9 @@ class RPICAM2DNG:
         profile_embed = 3
         fm = False
         
-        if str(self.etags['Image Model']) == 'RP_testc' or str(self.etags['Image Model']) == "imx477":
+        rphq_str = ('RP_testc', 'imx477', 'RP_imx477')
+        
+        if str(self.etags['Image Model']) in rphq_str:
             
             profile_name = "Repro 2_5D no LUT - D65 is really 5960K"
                                     
