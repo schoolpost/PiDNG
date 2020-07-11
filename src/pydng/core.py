@@ -125,9 +125,7 @@ def parseMaker(s):
             
             
 class RPICAM2DNG:
-    def __init__(self, dark=None, shade=None):
-        self.dark = dark
-        self.shade = shade
+    def __init__(self):
         self.header = None
         self.__exif__ = None
         self.maker_note = None
@@ -407,6 +405,119 @@ class RPICAM2DNG:
             return outputDNG
         else:
             return buf
+        
+        
+
+class RAW2DNG:
+    def __init__(self):
+        pass
+            
+    def __process__(self, rawImage, processing):
+        
+        if not processing:
+            return rawImage
+            
+        elif isinstance(processing, types.FunctionType):
+                        
+            processed = processing(rawImage)
+            if not isinstance(processed, np.ndarray):
+                raise TypeError("return value is not a valid numpy array!")
+            elif processed.shape != rawImage.shape:
+                raise ValueError("return array does not have the same shape!")
+            
+            return processed
+            
+        else:
+            raise TypeError("process arguement is not a valid function!")
+
+    
+    def convert(self, image, tags, filename="image", path="", process=None, compress=False):
+        dngTemplate = DNG()
+                
+        rawFrame = self.__process__(image, process)
+        
+        file_output = True
+        
+        width = tags.get(Tag.ImageWidth)[0]
+        length = tags.get(Tag.ImageLength)[0]
+        bpp = tags.get(Tag.BitsPerSample)[0]
+
+        compression_scheme = 7 if compress else 1
+
+        if compress:
+            tile = pack16tolj(rawFrame,int(width*2),int(length/2),bpp,0,0,0,"",6)
+        else:
+            if bpp == 8:
+                tile = rawFrame.astype('uint8').tobytes()
+            elif bpp == 10:
+                tile = pack10(rawFrame).tobytes()
+            elif bpp == 12:
+                tile = pack12(rawFrame).tobytes()
+            elif bpp == 14:
+                tile = pack14(rawFrame).tobytes()
+            elif bpp == 16:
+                tile = rawFrame.tobytes()
+                
+        dngTemplate.ImageDataStrips.append(tile)
+        # set up the FULL IFD
+        mainIFD = dngIFD()
+        mainTagStripOffset = dngTag(Tag.TileOffsets, [0 for tile in dngTemplate.ImageDataStrips])
+        mainIFD.tags.append(mainTagStripOffset)
+        mainIFD.tags.append(dngTag(Tag.NewSubfileType           , [0]))
+        mainIFD.tags.append(dngTag(Tag.TileByteCounts          , [len(tile) for tile in dngTemplate.ImageDataStrips]))
+        mainIFD.tags.append(dngTag(Tag.Compression              , [compression_scheme]))
+        mainIFD.tags.append(dngTag(Tag.Software                 , "PyDNG")) 
+        
+        for tag in tags.list():
+            try:
+                mainIFD.tags.append(dngTag(tag[0], tag[1]))
+            except Exception as e:
+                print("TAG Encoding Error!", e, tag)
+
+        dngTemplate.IFDs.append(mainIFD)
+
+        totalLength = dngTemplate.dataLen()
+
+        mainTagStripOffset.setValue([k for offset,k in dngTemplate.StripOffsets.items()])
+    
+        buf = bytearray(totalLength)
+        dngTemplate.setBuffer(buf)
+        dngTemplate.write()
+
+        if file_output:
+            outputDNG = filename + '.dng'
+            outfile = open(path+outputDNG, "wb")
+            outfile.write(buf)
+            outfile.close()
+            return outputDNG
+        else:
+            return buf
+        
+        
+class DNGTags:
+    def __init__(self):
+        self.__tags__ = dict()
+        
+    def set(self, tag, value):
+        if isinstance(value, int):
+            self.__tags__[tag] = (value,)
+        elif isinstance(value, float):
+            self.__tags__[tag] = (value,)
+        elif isinstance(value, str):
+            self.__tags__[tag] = value
+        elif len(value) > 1:
+            self.__tags__[tag] = value
+        else:
+            self.__tags__[tag] = (value,)
+                        
+    def get(self, tag):
+        return self.__tags__[tag]
+        
+    def list(self):
+        l = list()
+        for k,v in self.__tags__.items():
+            l.append((k, v))
+        return l
     
 
         
