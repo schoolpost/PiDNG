@@ -124,7 +124,10 @@ class Tag:
     ProfileHueSatMapDims        = (50937,Type.Long)
     ProfileHueSatMapData1       = (50938,Type.Float)
     ProfileHueSatMapData2       = (50939,Type.Float)
+    ProfileToneCurve            = (50940,Type.Float)
     ProfileEmbedPolicy          = (50941,Type.Long)
+    ForwardMatrix1              = (50964, Type.Srational)
+    ForwardMatrix2              = (50965, Type.Srational)
     PreviewApplicationName      = (50966,Type.Ascii)
     PreviewApplicationVersion   = (50967,Type.Ascii)
     PreviewSettingsDigest       = (50969,Type.Byte)
@@ -137,6 +140,7 @@ class Tag:
     OpcodeList2                 = (51009,Type.Undefined)
     ReelName                    = (51081,Type.Ascii)
     BaselineExposureOffset      = (51109,Type.Srational) # 1.4 Spec says rational but mentions negative values?
+    DefaultBlackRender          = (51110,Type.Long)
     NewRawImageDigest           = (51111,Type.Byte)
     
     

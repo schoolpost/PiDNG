@@ -43,6 +43,7 @@ CAMERA_VERSION = {
     "RP_imx219": "Raspberry Pi Camera V2",
     "RP_testc": "Raspberry Pi High Quality Camera",
     "RP_imx477": "Raspberry Pi High Quality Camera",
+    "imx477": "Raspberry Pi High Quality Camera",
 }
 
 SENSOR_NATIVE_BPP = {
@@ -50,6 +51,7 @@ SENSOR_NATIVE_BPP = {
     "RP_imx219": 10,
     "RP_testc": 12,
     "RP_imx477": 12,
+    "imx477": 12
 }
 
 
@@ -164,6 +166,7 @@ class RPICAM2DNG:
         'RP_imx219': 2,
         'RP_testc' : 3,
         'RP_imx477' : 3,
+        "imx477": 3,
         }[str(self.__exif__['Image Model'])]
 
         offset = {
@@ -255,18 +258,31 @@ class RPICAM2DNG:
         sensor_black = 4096 >> (16 - bpp)
         sensor_white = (1 << bpp) - 1
         
+        profile_name = "Standard Profile"
+        profile_embed = 3
+        fm = False
         
-        if str(self.etags['Image Model']) == 'RP_testc':
+        if str(self.etags['Image Model']) == 'RP_testc' or str(self.etags['Image Model']) == "imx477":
             
-            as_shot_neutral = [[3257,1000],[1000,1000],[1652,1000]]
+            profile_name = "Repro 2_5D no LUT - D65 is really 5960K"
+                                    
+            ccm1 = [[6759, 10000], [-2379, 10000], [751, 10000],	
+                    [-4432, 10000], [13871, 10000], [5465, 10000],
+                    [-401, 10000], [ 1664, 10000], [ 7845, 10000]]
 
-            ccm1 = [[16804, 10000], [-9787, 10000], [-2259, 10000],	
-                    [-3295, 10000], [13660, 10000], [-113, 10000],
-                    [-307, 10000], [ 1590, 10000], [ 6367, 10000]]
-
-            ccm2 = [[6883, 10000], [-1326, 10000], [-981, 10000],	
-                    [-4557, 10000], [13643, 10000], [632, 10000],
-                    [-1285, 10000], [ 2585, 10000], [4512, 10000]]
+            ccm2 = [[5603, 10000], [-1351, 10000], [-600, 10000],	
+                    [-2872, 10000], [11180, 10000], [2132, 10000],
+                    [600, 10000], [ 453, 10000], [5821, 10000]]
+            
+            fm = True
+            
+            fm1 = [[7889, 10000], [1273, 10000], [482, 10000],	
+                    [2401, 10000], [9705, 10000], [-2106, 10000],
+                    [-26, 10000], [ -4406, 10000], [ 12683, 10000]]
+        
+            fm2 = [[6591, 10000], [3034, 10000], [18, 10000],	
+                    [1991, 10000], [10585, 10000], [-2575, 10000],
+                    [-493, 10000], [ -919, 10000], [ 9663, 10000]]
 
             ci1 = 17
             ci2 = 21
@@ -283,12 +299,16 @@ class RPICAM2DNG:
                     [-270, 10000], [ -1083, 10000], [ 4366, 10000]]
             ci1 = 1
             ci2 = 23
+            
+        baseline_exp = 1
                 
         if self.maker_note:
             gain_r = int(float(self.maker_note['gain_r'])*1000)
             gain_b = int(float(self.maker_note['gain_b'])*1000)
+            
+            baseline_exp = int(self.maker_note['ev'])
 
-            as_shot_neutral = [[1000,gain_r],[1,1],[1000,gain_b]]
+            as_shot_neutral = [[1000,gain_r],[1000,1000],[1000,gain_b]]
 
         compression_scheme = 7 if compress else 1
 
@@ -348,9 +368,19 @@ class RPICAM2DNG:
         mainIFD.tags.append(dngTag(Tag.UniqueCameraModel        , camera_version))
         mainIFD.tags.append(dngTag(Tag.ColorMatrix1             , ccm1))
         mainIFD.tags.append(dngTag(Tag.ColorMatrix2             , ccm2))
+        if fm:
+            mainIFD.tags.append(dngTag(Tag.ForwardMatrix1             , fm1))
+            mainIFD.tags.append(dngTag(Tag.ForwardMatrix2             , fm2))
+        mainIFD.tags.append(dngTag(Tag.CameraCalibration1             , [[1,1]]))
+        mainIFD.tags.append(dngTag(Tag.CameraCalibration2             , [[1,1]]))
         mainIFD.tags.append(dngTag(Tag.AsShotNeutral            , as_shot_neutral))
+        mainIFD.tags.append(dngTag(Tag.BaselineExposure            , [[baseline_exp, 1]] ))
         mainIFD.tags.append(dngTag(Tag.CalibrationIlluminant1   , [ci1]))
         mainIFD.tags.append(dngTag(Tag.CalibrationIlluminant2   , [ci2]))
+        mainIFD.tags.append(dngTag(Tag.ProfileName              , profile_name ))
+        mainIFD.tags.append(dngTag(Tag.ProfileEmbedPolicy       , [profile_embed] ))
+        # mainIFD.tags.append(dngTag(Tag.ProfileToneCurve   , [0.0,0.0,1.0,1.0]))
+        mainIFD.tags.append(dngTag(Tag.DefaultBlackRender   , [0]))
         mainIFD.tags.append(dngTag(Tag.PreviewColorSpace   , [2]))
 
         dngTemplate.IFDs.append(mainIFD)
