@@ -21,7 +21,6 @@ def main():
 
     inputFilename = None
     compress = False
-    process = False
     
     try:
         options, args = getopt.getopt(sys.argv[1:], 'hc', ['help','compress'])
@@ -49,7 +48,7 @@ def main():
         inputFilename = args[0]
 
     d = RPICAM2DNG()
-    d.convert(inputFilename, process=process, compress=compress)
+    d.convert(inputFilename, compress=compress)
 
 if __name__ == "__main__":
     main()
