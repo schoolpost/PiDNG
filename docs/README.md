@@ -33,24 +33,36 @@ Requires:
 - ExifRead
 
 
+### Install
 
 ```
-#install 
+# download
+git clone https://github.com/schoolpost/PyDNG.git
+cd PyDNG
+
+# install 
+pip3 install src/.
+
+# or
 pip install src/.
 
-#examples
-Usage:
-  from pydng.core import RPICAM2DNG
+```
+### How to use:
 
-  d = RPICAM2DNG()
+```
 
-  # example using a file string input
-  d.convert('color.jpg')
+# examples
+from pydng.core import RPICAM2DNG
+
+# use file string input to the jpeg+raw file. 
+d = RPICAM2DNG()
+d.convert('imx477.jpg')
 
 
+# the included command line utility can be used as shown below
 Utility.py:
-  python examples/utility.py <options> <inputFilename> 
-  python examples/utility.py color.jpg  
+  python3 examples/utility.py <options> <inputFilename> 
+  python3 examples/utility.py imx477.jpg  
 
 ```
 
