@@ -323,9 +323,9 @@ class RPICAM2DNG:
 
         baseline_exp = 1
         
-        camera_calibration = [[1, 1], [0, 0], [0, 0],
-                              [0, 0], [1, 1], [0, 0],
-                              [0, 0], [0, 0], [1, 1]]
+        camera_calibration = [[1, 1], [0, 1], [0, 1],
+                              [0, 1], [1, 1], [0, 1],
+                              [0, 1], [0, 1], [1, 1]]
 
         if self.maker_note:
             gain_r = int(float(self.maker_note['gain_r'])*1000)
