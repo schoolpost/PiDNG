@@ -322,6 +322,10 @@ class RPICAM2DNG:
             ci2 = 23
 
         baseline_exp = 1
+        
+        camera_calibration = [[1, 1], [0, 0], [0, 0],
+                              [0, 0], [1, 1], [0, 0],
+                              [0, 0], [0, 0], [1, 1]]
 
         if self.maker_note:
             gain_r = int(float(self.maker_note['gain_r'])*1000)
@@ -399,8 +403,8 @@ class RPICAM2DNG:
         if fm:
             mainIFD.tags.append(dngTag(Tag.ForwardMatrix1, fm1))
             mainIFD.tags.append(dngTag(Tag.ForwardMatrix2, fm2))
-        mainIFD.tags.append(dngTag(Tag.CameraCalibration1, [[1, 1]]))
-        mainIFD.tags.append(dngTag(Tag.CameraCalibration2, [[1, 1]]))
+        mainIFD.tags.append(dngTag(Tag.CameraCalibration1, camera_calibration))
+        mainIFD.tags.append(dngTag(Tag.CameraCalibration2, camera_calibration))
         mainIFD.tags.append(dngTag(Tag.AsShotNeutral, as_shot_neutral))
         mainIFD.tags.append(dngTag(Tag.BaselineExposure, [[baseline_exp, 1]]))
         mainIFD.tags.append(dngTag(Tag.CalibrationIlluminant1, [ci1]))
