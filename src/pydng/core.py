@@ -334,10 +334,10 @@ class RPICAM2DNG:
             ccm2 = [[x, multiplier] for x in ccm2]
 
             fm = True
-            fm1 = (multiplier * np.array(json_camera_profile["ForwardMatrix1"])).astype(int).tolist()
+            fm1 = (multiplier * np.array(json_camera_profile["ForwardMatrix1"])).astype(int).flatten().tolist()
             fm1 = [[x, multiplier] for x in fm1]
 
-            fm2 = (multiplier * np.array(json_camera_profile["ForwardMatrix2"])).astype(int).tolist()
+            fm2 = (multiplier * np.array(json_camera_profile["ForwardMatrix2"])).astype(int).flatten().tolist()
             fm2 = [[x, multiplier] for x in fm2]
 
             dbr = json_camera_profile["DefaultBlackRender"]
