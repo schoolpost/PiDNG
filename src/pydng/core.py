@@ -15,9 +15,9 @@ import numpy as np
 import exifread
 import ctypes
 import zlib
+import json
 
 from .dng import Type, Tag, dngHeader, dngIFD, dngTag, DNG
-
 
 class BroadcomRawHeader(ctypes.Structure):
     _fields_ = [
@@ -243,7 +243,7 @@ class RPICAM2DNG:
         else:
             raise TypeError("process arguement is not a valid function!")
 
-    def convert(self, image, width=None, length=None, process=None, compress=False, bpp=None):
+    def convert(self, image, width=None, length=None, process=None, compress=False, bpp=None, profile_json=None):
         dngTemplate = DNG()
 
         file_output = False
@@ -283,8 +283,30 @@ class RPICAM2DNG:
 
         rphq_str = ('RP_testc', 'imx477', 'RP_imx477')
 
-        if str(self.etags['Image Model']) in rphq_str:
+        dbr = None
 
+        profile_tone_curve = False
+
+        if profile_json != None:
+            colour_profile = json.load(profile_json)
+
+            camera_version = colour_profile["UniqueCameraModel"]
+
+            profile_name = colour_profile["ProfileName"]
+            profile_copyright = colour_profile["ProfileCopyright"] # No Tag
+            profile_embed_array = colour_profile["ProfileEmbedPolicy"]
+
+            ci1 = colour_profile["CalibrationIlluminant1"]
+            ccm1 = colour_profile["ColorMatrix1"]
+            fm1 = colour_profile["ForwardMatrix1"]
+            ci2 = colour_profile["CalibrationIlluminant2"]
+            ccm2 = colour_profile["ColorMatrix2"]
+            fm2 = colour_profile["ForwardMatrix2"]
+
+            dbr = colour_profile["DefaultBlackRender"]
+            profile_tone_curve = colour_profile["ProfileToneCurve"]
+
+        else if str(self.etags['Image Model']) in rphq_str:
             profile_name = "Repro 2_5D no LUT - D65 is really 5960K"
 
             ccm1 = [[6759, 10000], [-2379, 10000], [751, 10000],
@@ -322,7 +344,7 @@ class RPICAM2DNG:
             ci2 = 23
 
         baseline_exp = 1
-        
+
         camera_calibration = [[1, 1], [0, 1], [0, 1],
                               [0, 1], [1, 1], [0, 1],
                               [0, 1], [0, 1], [1, 1]]
@@ -357,6 +379,26 @@ class RPICAM2DNG:
                 tile = pack14(rawFrame).tobytes()
             elif bpp == 16:
                 tile = rawFrame.tobytes()
+
+        if (isinstance(profile_embed, list)):
+            profile_embed_array = profile_embed
+        else:
+            profile_embed_array = [profile_embed]
+
+        if (isinstance(ci1, list)):
+            ci1_array = ci1
+        else:
+            ci1_array = [ci1]
+
+        if (isinstance(ci2, list)):
+            ci2_array = ci2
+        else:
+            ci2_array = [ci2]
+
+        if (dbr != None):
+            dbr_array = dbr
+        else:
+            dbr_array = [0]
 
         dngTemplate.ImageDataStrips.append(tile)
         # set up the FULL IFD
@@ -400,19 +442,25 @@ class RPICAM2DNG:
         mainIFD.tags.append(dngTag(Tag.UniqueCameraModel, camera_version))
         mainIFD.tags.append(dngTag(Tag.ColorMatrix1, ccm1))
         mainIFD.tags.append(dngTag(Tag.ColorMatrix2, ccm2))
+
         if fm:
             mainIFD.tags.append(dngTag(Tag.ForwardMatrix1, fm1))
             mainIFD.tags.append(dngTag(Tag.ForwardMatrix2, fm2))
+
         mainIFD.tags.append(dngTag(Tag.CameraCalibration1, camera_calibration))
         mainIFD.tags.append(dngTag(Tag.CameraCalibration2, camera_calibration))
         mainIFD.tags.append(dngTag(Tag.AsShotNeutral, as_shot_neutral))
         mainIFD.tags.append(dngTag(Tag.BaselineExposure, [[baseline_exp, 1]]))
-        mainIFD.tags.append(dngTag(Tag.CalibrationIlluminant1, [ci1]))
-        mainIFD.tags.append(dngTag(Tag.CalibrationIlluminant2, [ci2]))
+        mainIFD.tags.append(dngTag(Tag.CalibrationIlluminant1, [ci1_array]))
+        mainIFD.tags.append(dngTag(Tag.CalibrationIlluminant2, [ci2_array]))
         mainIFD.tags.append(dngTag(Tag.ProfileName, profile_name))
-        mainIFD.tags.append(dngTag(Tag.ProfileEmbedPolicy, [profile_embed]))
+        mainIFD.tags.append(dngTag(Tag.ProfileEmbedPolicy, profile_embed_array))
+
+        if profile_tone_curve:
+            mainIFD.tags.append(dngTag(Tag.ProfileToneCurve, profile_tone_curve))
         # mainIFD.tags.append(dngTag(Tag.ProfileToneCurve   , [0.0,0.0,1.0,1.0]))
-        mainIFD.tags.append(dngTag(Tag.DefaultBlackRender, [0]))
+
+        mainIFD.tags.append(dngTag(Tag.DefaultBlackRender, dbr_array))
         mainIFD.tags.append(dngTag(Tag.PreviewColorSpace, [2]))
 
         dngTemplate.IFDs.append(mainIFD)
