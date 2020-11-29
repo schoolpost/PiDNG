@@ -76,6 +76,8 @@ For the RaspberryPi HQ camera there is a [repository](https://github.com/davidpl
 ```
 # example
 import os
+import json
+
 from pydng.core import RPICAM2DNG
 
 # Open file stream for JSON file
@@ -83,11 +85,11 @@ colour_profile_path = "/home/pi/NeutralLook.json"
 
 raw_colour_profile = None
 with open(colour_profile_path, "r") as file_stream:
-  raw_colour_profile = file_stream
+  json_colour_profile = json.load(file_stream)
 
 # use file string input to the jpeg+raw file.
 d = RPICAM2DNG()
-d.convert('imx477.jpg', profile_json=raw_colour_profile)
+d.convert('imx477.jpg', json_camera_profile=json_colour_profile)
 ```
 
 ***

@@ -15,7 +15,6 @@ import numpy as np
 import exifread
 import ctypes
 import zlib
-import json
 
 from .dng import Type, Tag, dngHeader, dngIFD, dngTag, DNG
 
@@ -243,7 +242,7 @@ class RPICAM2DNG:
         else:
             raise TypeError("process arguement is not a valid function!")
 
-    def convert(self, image, width=None, length=None, process=None, compress=False, bpp=None, profile_json=None):
+    def convert(self, image, width=None, length=None, process=None, compress=False, bpp=None, json_camera_profile=None):
         dngTemplate = DNG()
 
         file_output = False
@@ -287,24 +286,22 @@ class RPICAM2DNG:
 
         profile_tone_curve = False
 
-        if profile_json != None:
-            colour_profile = json.load(profile_json)
+        if json_camera_profile != None:
+            camera_version = json_camera_profile["UniqueCameraModel"]
 
-            camera_version = colour_profile["UniqueCameraModel"]
+            profile_name = json_camera_profile["ProfileName"]
+            profile_copyright = json_camera_profile["ProfileCopyright"] # No Tag
+            profile_embed_array = json_camera_profile["ProfileEmbedPolicy"]
 
-            profile_name = colour_profile["ProfileName"]
-            profile_copyright = colour_profile["ProfileCopyright"] # No Tag
-            profile_embed_array = colour_profile["ProfileEmbedPolicy"]
+            ci1 = json_camera_profile["CalibrationIlluminant1"]
+            ccm1 = json_camera_profile["ColorMatrix1"]
+            fm1 = json_camera_profile["ForwardMatrix1"]
+            ci2 = json_camera_profile["CalibrationIlluminant2"]
+            ccm2 = json_camera_profile["ColorMatrix2"]
+            fm2 = json_camera_profile["ForwardMatrix2"]
 
-            ci1 = colour_profile["CalibrationIlluminant1"]
-            ccm1 = colour_profile["ColorMatrix1"]
-            fm1 = colour_profile["ForwardMatrix1"]
-            ci2 = colour_profile["CalibrationIlluminant2"]
-            ccm2 = colour_profile["ColorMatrix2"]
-            fm2 = colour_profile["ForwardMatrix2"]
-
-            dbr = colour_profile["DefaultBlackRender"]
-            profile_tone_curve = colour_profile["ProfileToneCurve"]
+            dbr = json_camera_profile["DefaultBlackRender"]
+            profile_tone_curve = json_camera_profile["ProfileToneCurve"]
 
         elif (str(self.etags['Image Model']) in rphq_str):
             profile_name = "Repro 2_5D no LUT - D65 is really 5960K"
