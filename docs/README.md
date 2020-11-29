@@ -83,7 +83,7 @@ from pydng.core import RPICAM2DNG
 # Open file stream for JSON file
 colour_profile_path = "/home/pi/NeutralLook.json"
 
-raw_colour_profile = None
+json_colour_profile = None
 with open(colour_profile_path, "r") as file_stream:
   json_colour_profile = json.load(file_stream)
 
