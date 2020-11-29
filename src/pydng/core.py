@@ -422,7 +422,7 @@ class RPICAM2DNG:
         else:
             profile_embed_array = [profile_embed]
 
-        if (dbr != None or dbr != 'None'):
+        if (dbr != None or dbr != 'None' or dbr != 'Auto'):
             dbr_array = dbr
         else:
             dbr_array = [0]
