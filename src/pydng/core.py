@@ -293,12 +293,15 @@ class RPICAM2DNG:
             profile_copyright = json_camera_profile["ProfileCopyright"] # No Tag
             profile_embed_array = json_camera_profile["ProfileEmbedPolicy"]
 
-            ci1 = json_camera_profile["CalibrationIlluminant1"]
-            ccm1 = json_camera_profile["ColorMatrix1"]
-            fm1 = json_camera_profile["ForwardMatrix1"]
-            ci2 = json_camera_profile["CalibrationIlluminant2"]
-            ccm2 = json_camera_profile["ColorMatrix2"]
-            fm2 = json_camera_profile["ForwardMatrix2"]
+            # Multiplier to convert decimals to long ints
+            multiplier = 10000
+
+            ci1 = (multiplier * np.array(json_camera_profile["CalibrationIlluminant1"])).astype(int)
+            ccm1 = (multiplier * np.array(json_camera_profile["ColorMatrix1"])).astype(int)
+            fm1 = (multiplier * np.array(json_camera_profile["ForwardMatrix1"])).astype(int)
+            ci2 = (multiplier * np.array(json_camera_profile["CalibrationIlluminant2"])).astype(int)
+            ccm2 = (multiplier * np.array(json_camera_profile["ColorMatrix2"])).astype(int)
+            fm2 = (multiplier * np.array(json_camera_profile["ForwardMatrix2"])).astype(int)
 
             dbr = json_camera_profile["DefaultBlackRender"]
             profile_tone_curve = json_camera_profile["ProfileToneCurve"]
@@ -392,7 +395,7 @@ class RPICAM2DNG:
         else:
             ci2_array = [ci2]
 
-        if (dbr != None):
+        if (dbr != None || dbr != 'None'):
             dbr_array = dbr
         else:
             dbr_array = [0]
