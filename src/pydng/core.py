@@ -296,12 +296,12 @@ class RPICAM2DNG:
             # Multiplier to convert decimals to long ints
             multiplier = 10000
 
-            ci1 = (multiplier * np.array(json_camera_profile["CalibrationIlluminant1"])).astype(int)
-            ccm1 = (multiplier * np.array(json_camera_profile["ColorMatrix1"])).astype(int)
-            fm1 = (multiplier * np.array(json_camera_profile["ForwardMatrix1"])).astype(int)
-            ci2 = (multiplier * np.array(json_camera_profile["CalibrationIlluminant2"])).astype(int)
-            ccm2 = (multiplier * np.array(json_camera_profile["ColorMatrix2"])).astype(int)
-            fm2 = (multiplier * np.array(json_camera_profile["ForwardMatrix2"])).astype(int)
+            ci1 = (multiplier * np.array(json_camera_profile["CalibrationIlluminant1"])).astype(int).tolist()
+            ccm1 = (multiplier * np.array(json_camera_profile["ColorMatrix1"])).astype(int).tolist()
+            fm1 = (multiplier * np.array(json_camera_profile["ForwardMatrix1"])).astype(int).tolist()
+            ci2 = (multiplier * np.array(json_camera_profile["CalibrationIlluminant2"])).astype(int).tolist()
+            ccm2 = (multiplier * np.array(json_camera_profile["ColorMatrix2"])).astype(int).tolist()
+            fm2 = (multiplier * np.array(json_camera_profile["ForwardMatrix2"])).astype(int).tolist()
 
             dbr = json_camera_profile["DefaultBlackRender"]
             profile_tone_curve = json_camera_profile["ProfileToneCurve"]
@@ -395,7 +395,7 @@ class RPICAM2DNG:
         else:
             ci2_array = [ci2]
 
-        if (dbr != None || dbr != 'None'):
+        if (dbr != None or dbr != 'None'):
             dbr_array = dbr
         else:
             dbr_array = [0]
