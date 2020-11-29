@@ -328,8 +328,10 @@ class RPICAM2DNG:
             ci2 = calibration_illuminant_values[json_camera_profile["CalibrationIlluminant2"]]
 
             ccm1 = (multiplier * np.array(json_camera_profile["ColorMatrix1"])).astype(int).tolist()
-            fm1 = (multiplier * np.array(json_camera_profile["ForwardMatrix1"])).astype(int).tolist()
             ccm2 = (multiplier * np.array(json_camera_profile["ColorMatrix2"])).astype(int).tolist()
+
+            fm = True
+            fm1 = (multiplier * np.array(json_camera_profile["ForwardMatrix1"])).astype(int).tolist()
             fm2 = (multiplier * np.array(json_camera_profile["ForwardMatrix2"])).astype(int).tolist()
 
             dbr = json_camera_profile["DefaultBlackRender"]
