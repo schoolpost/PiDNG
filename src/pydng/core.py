@@ -296,10 +296,39 @@ class RPICAM2DNG:
             # Multiplier to convert decimals to long ints
             multiplier = 10000
 
-            ci1 = (multiplier * np.array(json_camera_profile["CalibrationIlluminant1"])).astype(int).tolist()
+            # Dict for CalibrationIlluminant values
+            calibration_illuminant_values = {
+              "Unknown": 0,
+              "Daylight": 1,
+              "Fluorescent": 2,
+              "Tungsten (incandescent light)": 3,
+              "Flash": 4,
+              "Fine weather": 9,
+              "Cloudy weather": 10,
+              "Shade": 11,
+              "Daylight fluorescent (D 5700 - 7100K)": 12,
+              "Day white fluorescent (N 4600 - 5400K)": 13,
+              "Cool white fluorescent (W 3900 - 4500K)": 14,
+              "White fluorescent (WW 3200 - 3700K)": 15,
+              "Standard light A": 17,
+              "StdA": 17,
+              "Standard light B": 18,
+              "StdB": 18,
+              "Standard light C": 19,
+              "StdC": 19,
+              "D55": 20,
+              "D65": 21,
+              "D75": 22,
+              "D50": 23,
+              "ISO studio tungsten": 24,
+              "Other light source": 255,
+            }
+
+            ci1 = calibration_illuminant_values[json_camera_profile["CalibrationIlluminant1"]]
+            ci2 = calibration_illuminant_values[json_camera_profile["CalibrationIlluminant2"]]
+
             ccm1 = (multiplier * np.array(json_camera_profile["ColorMatrix1"])).astype(int).tolist()
             fm1 = (multiplier * np.array(json_camera_profile["ForwardMatrix1"])).astype(int).tolist()
-            ci2 = (multiplier * np.array(json_camera_profile["CalibrationIlluminant2"])).astype(int).tolist()
             ccm2 = (multiplier * np.array(json_camera_profile["ColorMatrix2"])).astype(int).tolist()
             fm2 = (multiplier * np.array(json_camera_profile["ForwardMatrix2"])).astype(int).tolist()
 
