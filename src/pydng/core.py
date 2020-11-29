@@ -422,16 +422,6 @@ class RPICAM2DNG:
         else:
             profile_embed_array = [profile_embed]
 
-        if (isinstance(ci1, list)):
-            ci1_array = ci1
-        else:
-            ci1_array = [ci1]
-
-        if (isinstance(ci2, list)):
-            ci2_array = ci2
-        else:
-            ci2_array = [ci2]
-
         if (dbr != None or dbr != 'None'):
             dbr_array = dbr
         else:
@@ -488,8 +478,8 @@ class RPICAM2DNG:
         mainIFD.tags.append(dngTag(Tag.CameraCalibration2, camera_calibration))
         mainIFD.tags.append(dngTag(Tag.AsShotNeutral, as_shot_neutral))
         mainIFD.tags.append(dngTag(Tag.BaselineExposure, [[baseline_exp, 1]]))
-        mainIFD.tags.append(dngTag(Tag.CalibrationIlluminant1, [ci1_array]))
-        mainIFD.tags.append(dngTag(Tag.CalibrationIlluminant2, [ci2_array]))
+        mainIFD.tags.append(dngTag(Tag.CalibrationIlluminant1, [ci1]))
+        mainIFD.tags.append(dngTag(Tag.CalibrationIlluminant2, [ci2]))
         mainIFD.tags.append(dngTag(Tag.ProfileName, profile_name))
         mainIFD.tags.append(dngTag(Tag.ProfileEmbedPolicy, profile_embed_array))
 
