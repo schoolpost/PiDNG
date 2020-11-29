@@ -341,7 +341,7 @@ class RPICAM2DNG:
             fm2 = [[x, multiplier] for x in fm2]
 
             dbr = json_camera_profile["DefaultBlackRender"]
-            profile_tone_curve = json_camera_profile["ProfileToneCurve"]
+            profile_tone_curve = np.array(json_camera_profile["ProfileToneCurve"]).flatten().tolist()
 
         elif (str(self.etags['Image Model']) in rphq_str):
             profile_name = "Repro 2_5D no LUT - D65 is really 5960K"
