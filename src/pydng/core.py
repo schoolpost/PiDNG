@@ -306,7 +306,7 @@ class RPICAM2DNG:
             dbr = colour_profile["DefaultBlackRender"]
             profile_tone_curve = colour_profile["ProfileToneCurve"]
 
-        else if str(self.etags['Image Model']) in rphq_str:
+        elif (str(self.etags['Image Model']) in rphq_str):
             profile_name = "Repro 2_5D no LUT - D65 is really 5960K"
 
             ccm1 = [[6759, 10000], [-2379, 10000], [751, 10000],
