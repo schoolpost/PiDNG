@@ -179,8 +179,9 @@ class RPICAM2DNG:
             3: 18711040,
         }[ver]
 
-        self.maker_note = parseMaker(
-            bytearray(self.__exif__['MakerNoteSafety'].values).decode())
+        # Skip for now
+        # self.maker_note = parseMaker(
+        #     bytearray(self.__exif__['MakerNoteSafety'].values).decode())
 
         data = img.getvalue()[-offset:]
         assert data[:4] == 'BRCM'.encode("ascii")
