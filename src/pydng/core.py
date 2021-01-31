@@ -456,8 +456,9 @@ class RPICAM2DNG:
         #     dngTag(Tag.ApertureValue, parseTag(self.etags['ApertureValue'])))
         mainIFD.tags.append(dngTag(Tag.ShutterSpeedValue, parseTag(
             self.etags['ShutterSpeedValue'])))
-        mainIFD.tags.append(
-            dngTag(Tag.FocalLength, parseTag(self.etags['FocalLength'])))
+        # mainIFD.tags.append(
+        #     dngTag(Tag.FocalLength, parseTag(self.etags['FocalLength'])))
+        # Max aperture + others, TODO create a method to skip keys
         mainIFD.tags.append(
             dngTag(Tag.ExposureTime, parseTag(self.etags['ExposureTime'])))
         mainIFD.tags.append(dngTag(Tag.DateTime, str(
