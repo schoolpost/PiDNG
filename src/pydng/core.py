@@ -289,6 +289,8 @@ class RPICAM2DNG:
         profile_tone_curve = False
 
         if json_camera_profile != None:
+            as_shot_neutral = [[10043, 10000], [16090, 10000], [10000, 10000]]
+
             camera_version = json_camera_profile["UniqueCameraModel"]
 
             profile_name = json_camera_profile["ProfileName"]
