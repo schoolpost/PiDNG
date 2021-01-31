@@ -136,15 +136,15 @@ class RPICAM2DNG:
         self.__exif__ = None
         self.maker_note = None
         self.etags = {
-            'EXIF DateTimeDigitized': None,
-            'EXIF FocalLength': 0,
-            'EXIF ExposureTime': 0,
-            'EXIF ISOSpeedRatings': 0,
-            'EXIF ApertureValue': 0,
-            'EXIF ShutterSpeedValue': 0,
+            'DateTimeDigitized': None,
+            'FocalLength': 0,
+            'ExposureTime': 0,
+            'ISOSpeedRatings': 0,
+            'ApertureValue': 0,
+            'ShutterSpeedValue': 0,
             'Image Model': "",
             'Image Make': "",
-            'EXIF WhiteBalance': 0
+            'WhiteBalance': 0
         }
 
     def __extractRAW__(self, img):
@@ -180,7 +180,7 @@ class RPICAM2DNG:
         }[ver]
 
         self.maker_note = parseMaker(
-            bytearray(self.__exif__['EXIF MakerNote'].values).decode())
+            bytearray(self.__exif__['MakerNote'].values).decode())
 
         data = img.getvalue()[-offset:]
         assert data[:4] == 'BRCM'.encode("ascii")
@@ -452,17 +452,17 @@ class RPICAM2DNG:
         mainIFD.tags.append(dngTag(Tag.Make, str(self.etags['Image Make'])))
         mainIFD.tags.append(dngTag(Tag.Model, str(self.etags['Image Model'])))
         mainIFD.tags.append(
-            dngTag(Tag.ApertureValue, parseTag(self.etags['EXIF ApertureValue'])))
+            dngTag(Tag.ApertureValue, parseTag(self.etags['ApertureValue'])))
         mainIFD.tags.append(dngTag(Tag.ShutterSpeedValue, parseTag(
-            self.etags['EXIF ShutterSpeedValue'])))
+            self.etags['ShutterSpeedValue'])))
         mainIFD.tags.append(
-            dngTag(Tag.FocalLength, parseTag(self.etags['EXIF FocalLength'])))
+            dngTag(Tag.FocalLength, parseTag(self.etags['FocalLength'])))
         mainIFD.tags.append(
-            dngTag(Tag.ExposureTime, parseTag(self.etags['EXIF ExposureTime'])))
+            dngTag(Tag.ExposureTime, parseTag(self.etags['ExposureTime'])))
         mainIFD.tags.append(dngTag(Tag.DateTime, str(
-            self.etags['EXIF DateTimeDigitized'])))
+            self.etags['DateTimeDigitized'])))
         mainIFD.tags.append(dngTag(Tag.PhotographicSensitivity, [
-                            int(str(self.etags['EXIF ISOSpeedRatings']))]))
+                            int(str(self.etags['ISOSpeedRatings']))]))
         mainIFD.tags.append(dngTag(Tag.Software, "PyDNG"))
         mainIFD.tags.append(dngTag(Tag.Orientation, [1]))
         mainIFD.tags.append(dngTag(Tag.DNGVersion, [1, 4, 0, 0]))
