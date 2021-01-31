@@ -111,6 +111,7 @@ class Tag:
     AntiAliasStrength           = (50738,Type.Rational)
     ShadowScale                 = (50739,Type.Rational)
     DNGPrivateData              = (50740,Type.Byte)
+    MakerNote                   = (50741,Type.Ascii)
     MakerNoteSafety             = (50741,Type.Short)
     CalibrationIlluminant1      = (50778,Type.Short)
     CalibrationIlluminant2      = (50779,Type.Short)
@@ -142,8 +143,8 @@ class Tag:
     BaselineExposureOffset      = (51109,Type.Srational) # 1.4 Spec says rational but mentions negative values?
     DefaultBlackRender          = (51110,Type.Long)
     NewRawImageDigest           = (51111,Type.Byte)
-    
-    
+
+
 class dngHeader(object):
     def __init__(self):
         self.IFDOffset = 8
@@ -160,9 +161,9 @@ class dngTag(object):
         self.DataOffset = 0
 
         self.subIFD = None
-        
+
         self.setValue(value)
-        
+
         self.DataLength = len(self.Value)
 
         if (self.DataLength <= 4): self.selfContained = True
@@ -187,7 +188,7 @@ class dngTag(object):
             self.Value = "\x00\x00\x00\x00"
             self.subIFD = value[0]
         self.Value += str.encode('\x00'*(((len(self.Value)+3) & 0xFFFFFFFC) - len(self.Value)))
-        
+
 
     def setBuffer(self, buf, tagOffset, dataOffset):
         self.buf = buf
@@ -195,7 +196,7 @@ class dngTag(object):
         self.DataOffset = dataOffset
         if self.subIFD:
             self.subIFD.setBuffer(buf, self.DataOffset)
-            
+
     def dataLen(self):
         if self.subIFD:
             return self.subIFD.dataLen()
@@ -203,11 +204,11 @@ class dngTag(object):
             return 0
         else:
             return (len(self.Value) + 3) & 0xFFFFFFFC
-        
+
     def write(self):
         if not self.buf:
             raise RuntimeError("buffer not initialized")
-        
+
         if self.subIFD:
             self.subIFD.write()
             tagData = struct.pack("<HHII", self.TagId, Type.Long[0], self.DataCount, self.DataOffset)
@@ -220,8 +221,8 @@ class dngTag(object):
                 tagData = struct.pack("<HHII", self.TagId, self.DataType[0], self.DataCount, self.DataOffset)
                 struct.pack_into("<12s", self.buf, self.TagOffset, tagData)
                 struct.pack_into("<%ds" % (self.DataLength), self.buf, self.DataOffset, self.Value)
-            
-        
+
+
 class dngIFD(object):
     def __init__(self):
         self.tags = []
@@ -237,7 +238,7 @@ class dngIFD(object):
             currentTagOffset += 12
             currentDataOffset += tag.dataLen()
             #currentDataOffset = (currentDataOffset + 3) & 0xFFFFFFFC
-            
+
 
     def dataLen(self):
         totalLength = 2 + len(self.tags)*12 + 4
@@ -271,7 +272,7 @@ class DNG(object):
         for ifd in self.IFDs:
             ifd.setBuffer(buf, currentOffset)
             currentOffset += ifd.dataLen()
-            
+
 
     def dataLen(self):
         totalLength = 8
@@ -282,7 +283,7 @@ class DNG(object):
             self.StripOffsets[i] = totalLength
             strip = self.ImageDataStrips[i]
             totalLength += (len(strip) + 3) & 0xFFFFFFFC
-            
+
         return (totalLength + 3) & 0xFFFFFFFC
 
     def write(self):
