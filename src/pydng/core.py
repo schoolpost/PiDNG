@@ -255,11 +255,12 @@ class RPICAM2DNG:
             raise ValueError
 
         rawFrame = self.__process__(image, process)
-        for k, v in self.etags.items():
-            try:
-                self.etags[k] = self.__exif__[k]
-            except KeyError:
-                self.etags[k] = 0
+        # for k, v in self.etags.items():
+        #     try:
+        #         self.etags[k] = self.__exif__[k]
+        #     except KeyError:
+        #         self.etags[k] = 0
+        self.etags = self.__exif__
 
         if not width:
             width = int(self.header.width)
