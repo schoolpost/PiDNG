@@ -111,7 +111,6 @@ class Tag:
     AntiAliasStrength           = (50738,Type.Rational)
     ShadowScale                 = (50739,Type.Rational)
     DNGPrivateData              = (50740,Type.Byte)
-    MakerNote                   = (50741,Type.Ascii)
     MakerNoteSafety             = (50741,Type.Short)
     CalibrationIlluminant1      = (50778,Type.Short)
     CalibrationIlluminant2      = (50779,Type.Short)

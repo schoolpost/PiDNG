@@ -180,7 +180,7 @@ class RPICAM2DNG:
         }[ver]
 
         self.maker_note = parseMaker(
-            bytearray(self.__exif__['MakerNote'].values).decode())
+            bytearray(self.__exif__['MakerNoteSafety'].values).decode())
 
         data = img.getvalue()[-offset:]
         assert data[:4] == 'BRCM'.encode("ascii")
