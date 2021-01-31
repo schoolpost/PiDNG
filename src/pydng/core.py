@@ -136,15 +136,15 @@ class RPICAM2DNG:
         self.__exif__ = None
         self.maker_note = None
         self.etags = {
-            'DateTimeDigitized': None,
-            'FocalLength': 0,
-            'ExposureTime': 0,
-            'ISOSpeedRatings': 0,
-            'ApertureValue': 0,
-            'ShutterSpeedValue': 0,
+            'EXIF DateTimeDigitized': None,
+            'EXIF FocalLength': 0,
+            'EXIF ExposureTime': 0,
+            'EXIF ISOSpeedRatings': 0,
+            'EXIF ApertureValue': 0,
+            'EXIF ShutterSpeedValue': 0,
             'Image Model': "",
             'Image Make': "",
-            'WhiteBalance': 0
+            'EXIF WhiteBalance': 0
         }
 
     def __extractRAW__(self, img):
@@ -179,9 +179,8 @@ class RPICAM2DNG:
             3: 18711040,
         }[ver]
 
-        # Skip for now
-        # self.maker_note = parseMaker(
-        #     bytearray(self.__exif__['MakerNoteSafety'].values).decode())
+        self.maker_note = parseMaker(
+            bytearray(self.__exif__['EXIF MakerNote'].values).decode())
 
         data = img.getvalue()[-offset:]
         assert data[:4] == 'BRCM'.encode("ascii")
@@ -256,12 +255,11 @@ class RPICAM2DNG:
             raise ValueError
 
         rawFrame = self.__process__(image, process)
-        # for k, v in self.etags.items():
-        #     try:
-        #         self.etags[k] = self.__exif__[k]
-        #     except KeyError:
-        #         self.etags[k] = 0
-        self.etags = self.__exif__
+        for k, v in self.etags.items():
+            try:
+                self.etags[k] = self.__exif__[k]
+            except KeyError:
+                self.etags[k] = 0
 
         if not width:
             width = int(self.header.width)
@@ -289,8 +287,6 @@ class RPICAM2DNG:
         profile_tone_curve = False
 
         if json_camera_profile != None:
-            as_shot_neutral = [[10043, 10000], [16090, 10000], [10000, 10000]]
-
             camera_version = json_camera_profile["UniqueCameraModel"]
 
             profile_name = json_camera_profile["ProfileName"]
@@ -454,13 +450,12 @@ class RPICAM2DNG:
         mainIFD.tags.append(dngTag(Tag.WhiteLevel, [sensor_white]))
         mainIFD.tags.append(dngTag(Tag.Make, str(self.etags['Image Make'])))
         mainIFD.tags.append(dngTag(Tag.Model, str(self.etags['Image Model'])))
-        # mainIFD.tags.append(
-        #     dngTag(Tag.ApertureValue, parseTag(self.etags['ApertureValue'])))
+        mainIFD.tags.append(
+            dngTag(Tag.ApertureValue, parseTag(self.etags['EXIF ApertureValue'])))
         mainIFD.tags.append(dngTag(Tag.ShutterSpeedValue, parseTag(
             self.etags['EXIF ShutterSpeedValue'])))
-        # mainIFD.tags.append(
-        #     dngTag(Tag.FocalLength, parseTag(self.etags['FocalLength'])))
-        # Max aperture + others, TODO create a method to skip keys
+        mainIFD.tags.append(
+            dngTag(Tag.FocalLength, parseTag(self.etags['EXIF FocalLength'])))
         mainIFD.tags.append(
             dngTag(Tag.ExposureTime, parseTag(self.etags['EXIF ExposureTime'])))
         mainIFD.tags.append(dngTag(Tag.DateTime, str(
