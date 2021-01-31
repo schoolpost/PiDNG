@@ -452,8 +452,8 @@ class RPICAM2DNG:
         mainIFD.tags.append(dngTag(Tag.WhiteLevel, [sensor_white]))
         mainIFD.tags.append(dngTag(Tag.Make, str(self.etags['Image Make'])))
         mainIFD.tags.append(dngTag(Tag.Model, str(self.etags['Image Model'])))
-        mainIFD.tags.append(
-            dngTag(Tag.ApertureValue, parseTag(self.etags['ApertureValue'])))
+        # mainIFD.tags.append(
+        #     dngTag(Tag.ApertureValue, parseTag(self.etags['ApertureValue'])))
         mainIFD.tags.append(dngTag(Tag.ShutterSpeedValue, parseTag(
             self.etags['ShutterSpeedValue'])))
         mainIFD.tags.append(
