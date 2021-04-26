@@ -144,7 +144,9 @@ class RPICAM2DNG:
             'EXIF ShutterSpeedValue': 0,
             'Image Model': "",
             'Image Make': "",
-            'EXIF WhiteBalance': 0
+            'EXIF WhiteBalance': 0,
+            'Image ImageWidth': 0,
+            'Image ImageLength': 0
         }
 
     def __extractRAW__(self, img):
@@ -173,10 +175,16 @@ class RPICAM2DNG:
             "imx477": 3,
         }[str(self.__exif__['Image Model'])]
 
+        if int(str(self.__exif__['Image ImageWidth'])) == 2028 \
+            and int(str(self.__exif__['Image ImageLength'])) == 1520 \
+                and ver == 3:
+            ver = 4
+
         offset = {
             1: 6404096,
             2: 10270208,
             3: 18711040,
+            4: 4751360,
         }[ver]
 
         self.maker_note = parseMaker(
@@ -195,6 +203,7 @@ class RPICAM2DNG:
             1: ((1952, 3264), (1944, 3240)),
             2: ((2480, 4128), (2464, 4100)),
             3: ((3056, 6112), (3040, 6084)),
+            4: ((1536, 3072), (1520, 3042)),
         }[ver]
         data = data.reshape(reshape)[:crop[0], :crop[1]]
 
@@ -263,6 +272,7 @@ class RPICAM2DNG:
 
         if not width:
             width = int(self.header.width)
+
         if not length:
             length = int(self.header.height)
 
