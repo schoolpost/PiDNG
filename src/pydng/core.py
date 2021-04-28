@@ -527,10 +527,11 @@ class RAW2DNG:
         dngTemplate.write()
 
         if file_output:
-            outputDNG = filename + '.dng'
-            outfile = open(path+outputDNG, "wb")
-            outfile.write(buf)
-            outfile.close()
+            if not filename.endswith(".dng"):
+                filename = filename + '.dng'
+            outputDNG = os.path.join(path, filename)
+            with open(outputDNG, "wb") as outfile:
+                outfile.write(buf)
             return outputDNG
         else:
             return buf
