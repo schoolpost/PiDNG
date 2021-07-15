@@ -1,9 +1,4 @@
-# from distutils.core import setup, Extension
 from setuptools import setup, Extension
-import setuptools
-import os
-import shutil
-import platform
 
 
 ljpeg92 = Extension('ljpegCompress', sources=[
