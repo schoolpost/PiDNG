@@ -1,4 +1,4 @@
-PYDNG
+PiDNG
 =========
 ![](https://img.shields.io/badge/Version-3.4.4-green.svg)
 
