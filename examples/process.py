@@ -1,9 +1,9 @@
-from pydng.core import RPICAM2DNG
-import numpy as np
+from pidng.core import RPICAM2DNG
 
-def processing(raw):
+
+def processing(raw, _dummy):
     # access to the bayer raw numpy array here. 
     print(raw.shape, raw.size)
     return raw
 
-RPICAM2DNG().convert("imx477.jpg", process=processing)
+RPICAM2DNG().convert("../imx477.jpg", process=processing)
