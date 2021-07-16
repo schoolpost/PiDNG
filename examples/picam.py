@@ -1,7 +1,7 @@
 import time
 import picamera
 from io import BytesIO
-from pidng import RPICAM2DNG
+from pidng.core import RPICAM2DNG
 
 # using RPICAM2DNG with a stream output such as what is given in picamera. Examples assumes use of OV5647. 
 

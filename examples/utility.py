@@ -1,4 +1,4 @@
-from pidng import RPICAM2DNG
+from pidng.core import RPICAM2DNG
 import sys, getopt
 
 #=========================================================================================================
