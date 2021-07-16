@@ -1,5 +1,5 @@
-from pydng.core import RPICAM2DNG
-import time, sys, os, getopt
+from pidng import RPICAM2DNG
+import sys, getopt
 
 #=========================================================================================================
 helptext = '''utility.py - Command line converter from raspberry pi camera JPEG+RAW format to DNG format. 

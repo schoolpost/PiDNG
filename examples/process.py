@@ -1,5 +1,5 @@
-from pydng.core import RPICAM2DNG
-import numpy as np
+from pidng import RPICAM2DNG
+
 
 def processing(raw):
     # access to the bayer raw numpy array here. 

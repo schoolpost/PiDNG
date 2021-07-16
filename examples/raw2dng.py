@@ -1,6 +1,6 @@
-from pydng.core import RAW2DNG, DNGTags, Tag
+from pidng import RAW2DNG, DNGTags, Tag
 import numpy as np
-import struct, collections
+import struct
 
 # image specs
 width = 4096
