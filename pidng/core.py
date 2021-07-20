@@ -1,22 +1,13 @@
-#!/usr/bin/python3.7
-
-import sys
-import struct
 import os
 import io
-import time
-import array
-import getopt
-import platform
-import operator
-import errno
 import types
+from dataclasses import dataclass
+
 import numpy as np
 import exifread
 import ctypes
-import zlib
 
-from .dng import Type, Tag, dngHeader, dngIFD, dngTag, DNG
+from .dng import Tag, dngIFD, dngTag, DNG
 
 
 class BroadcomRawHeader(ctypes.Structure):
@@ -129,6 +120,96 @@ def parseMaker(s):
         else:
             d["unk"].append(param)
     return d
+
+
+PROFILE_EMBED = 3
+
+@dataclass
+class Profile:
+    name : None
+    ccm1 : None
+    ccm2 : None
+    illu1 : None
+    illu2 : None
+    as_shot_neutral : list
+    profile_name : None
+
+    def write(self, main_ifd, maker_note):
+        baseline_exp = 1
+
+        camera_calibration = [[1, 1], [0, 1], [0, 1],
+                              [0, 1], [1, 1], [0, 1],
+                              [0, 1], [0, 1], [1, 1]]
+
+        if maker_note:
+            gain_r = int(float(maker_note['gain_r'])*1000)
+            gain_b = int(float(maker_note['gain_b'])*1000)
+
+            baseline_exp = int(maker_note['ev'])
+
+            self.as_shot_neutral = [[1000, gain_r], [1000, 1000], [1000, gain_b]]
+
+        main_ifd.tags.append(dngTag(Tag.ColorMatrix1, self.ccm1))
+        main_ifd.tags.append(dngTag(Tag.ColorMatrix2, self.ccm2))
+        main_ifd.tags.append(dngTag(Tag.CameraCalibration1, camera_calibration))
+        main_ifd.tags.append(dngTag(Tag.CameraCalibration2, camera_calibration))
+        main_ifd.tags.append(dngTag(Tag.AsShotNeutral, self.as_shot_neutral))
+        main_ifd.tags.append(dngTag(Tag.BaselineExposure, [[baseline_exp, 1]]))
+        main_ifd.tags.append(dngTag(Tag.CalibrationIlluminant1, [self.illu1]))
+        main_ifd.tags.append(dngTag(Tag.CalibrationIlluminant2, [self.illu2]))
+        main_ifd.tags.append(dngTag(Tag.ProfileName, self.profile_name))
+        main_ifd.tags.append(dngTag(Tag.ProfileEmbedPolicy, [PROFILE_EMBED]))
+        # main_ifd.tags.append(dngTag(Tag.ProfileToneCurve   , [0.0,0.0,1.0,1.0]))
+        main_ifd.tags.append(dngTag(Tag.DefaultBlackRender, [0]))
+        main_ifd.tags.append(dngTag(Tag.PreviewColorSpace, [2]))
+
+
+@dataclass
+class FMProfile(Profile):
+    fm1 : None
+    fm2 : None
+
+    def write(self, main_ifd, maker_note):
+        super(FMProfile, self).write(main_ifd, maker_note)
+        main_ifd.tags.append(dngTag(Tag.ForwardMatrix1, self.fm1))
+        main_ifd.tags.append(dngTag(Tag.ForwardMatrix2, self.fm2))
+
+
+IMX477 = {
+    'name' : 'IMX477',
+    'profile_name' : 'Repro 2_5D no LUT - D65 is really 5960K',
+    'as_shot_neutral' : None,
+    'ccm1' : [[6759, 10000], [-2379, 10000], [751, 10000],
+            [-4432, 10000], [13871, 10000], [5465, 10000],
+            [-401, 10000], [1664, 10000], [7845, 10000]],
+    'ccm2' : [[5603, 10000], [-1351, 10000], [-600, 10000],
+            [-2872, 10000], [11180, 10000], [2132, 10000],
+            [600, 10000], [453, 10000], [5821, 10000]],
+    'fm1' : [[7889, 10000], [1273, 10000], [482, 10000],
+           [2401, 10000], [9705, 10000], [-2106, 10000],
+           [-26, 10000], [-4406, 10000], [12683, 10000]],
+    'fm2' : [[6591, 10000], [3034, 10000], [18, 10000],
+           [1991, 10000], [10585, 10000], [-2575, 10000],
+           [-493, 10000], [-919, 10000], [9663, 10000]],
+    'illu1' : 17,
+    'illu2' : 21,
+}
+
+RASPI = {
+    'name' : 'Standard',
+    'profile_name' : 'Standard',
+    'as_shot_neutral' : [[10043, 10000], [16090, 10000], [10000, 10000]],
+
+    'ccm1' : [[19549, 10000], [-7877, 10000], [-2582, 10000],
+        [-5724, 10000], [10121, 10000], [1917, 10000],
+        [-1267, 10000], [-110, 10000], [6621, 10000]],
+
+    'ccm2' : [[13244, 10000], [-5501, 10000], [-1248, 10000],
+        [-1508, 10000], [9858, 10000], [1935, 10000],
+        [-270, 10000], [-1083, 10000], [4366, 10000]],
+    'illu1' : 1,
+    'illu2' :23,
+}
 
 
 class RPICAM2DNG:
@@ -250,10 +331,127 @@ class RPICAM2DNG:
             return processed
 
         else:
-            raise TypeError("process arguement is not a valid function!")
+            raise TypeError("process argument is not a valid function!")
 
-    def convert(self, image, width=None, length=None, process=None, compress=False, bpp=None):
-        dngTemplate = DNG()
+    def get_exif_tags(self):
+        """
+        Copy the exif information for the tags in etags
+        """
+        for k, v in self.etags.items():
+            try:
+                self.etags[k] = self.__exif__[k]
+            except KeyError:
+                self.etags[k] = 0
+
+    def raw_frame2tile(self, main_ifd, raw_frame, width=None, height=None, compress=False, bpp=None):
+        if not width:
+            width = int(self.header.width)
+
+        if not height:
+            height = int(self.header.height)
+
+        cfa_pattern = BAYER_ORDER[self.header.bayer_order]
+
+        sensor_bpp = SENSOR_NATIVE_BPP[str(self.etags['Image Model'])]
+        if not bpp:
+            bpp = sensor_bpp
+
+        if compress:
+            from ljpegCompress import pack16tolj
+            tile = pack16tolj(raw_frame, int(width*2),
+                              int(height / 2), bpp, 0, 0, 0, "", 6)
+        else:
+            if (bpp - sensor_bpp) >= 0:
+                raw_frame = raw_frame << (bpp - sensor_bpp)
+            else:
+                raw_frame = raw_frame >> abs(bpp - sensor_bpp)
+
+            if bpp == 8:
+                tile = (raw_frame//255).astype('uint8').tobytes()
+            elif bpp == 10:
+                tile = pack10(raw_frame).tobytes()
+            elif bpp == 12:
+                tile = pack12(raw_frame).tobytes()
+            elif bpp == 14:
+                tile = pack14(raw_frame).tobytes()
+            elif bpp == 16:
+                tile = raw_frame.tobytes()
+
+
+        sensor_black = 4096 >> (16 - bpp)
+        sensor_white = (1 << bpp) - 1
+        compression_scheme = 7 if compress else 1
+
+        main_ifd.tags.append(dngTag(Tag.NewSubfileType, [0]))
+        main_ifd.tags.append(dngTag(Tag.CFAPattern, cfa_pattern))
+        main_ifd.tags.append(dngTag(Tag.CFARepeatPatternDim, [2, 2]))
+        main_ifd.tags.append(dngTag(Tag.BlackLevel, [sensor_black]))
+        main_ifd.tags.append(dngTag(Tag.WhiteLevel, [sensor_white]))
+        main_ifd.tags.append(dngTag(Tag.ImageWidth, [width]))
+        main_ifd.tags.append(dngTag(Tag.ImageLength, [height]))
+        main_ifd.tags.append(dngTag(Tag.SamplesPerPixel, [1]))
+        main_ifd.tags.append(dngTag(Tag.BitsPerSample, [bpp]))
+        main_ifd.tags.append(dngTag(Tag.TileWidth, [width]))
+        main_ifd.tags.append(dngTag(Tag.TileLength, [height]))
+        main_ifd.tags.append(dngTag(Tag.Compression, [compression_scheme]))
+
+        return tile
+        
+    def add_exif(self, main_ifd):
+        main_ifd.tags.append(dngTag(Tag.PhotometricInterpretation, [32803]))
+        main_ifd.tags.append(dngTag(Tag.Software, "PyDNG"))
+        main_ifd.tags.append(dngTag(Tag.Orientation, [1]))
+        main_ifd.tags.append(dngTag(Tag.DNGVersion, [1, 4, 0, 0]))
+        main_ifd.tags.append(dngTag(Tag.DNGBackwardVersion, [1, 2, 0, 0]))
+
+        main_ifd.tags.append(dngTag(Tag.UniqueCameraModel, CAMERA_VERSION[str(self.etags['Image Model'])]))
+        main_ifd.tags.append(dngTag(Tag.Make, str(self.etags['Image Make'])))
+        main_ifd.tags.append(dngTag(Tag.Model, str(self.etags['Image Model'])))
+        main_ifd.tags.append(
+            dngTag(Tag.ApertureValue, parseTag(self.etags['EXIF ApertureValue'])))
+        main_ifd.tags.append(dngTag(Tag.ShutterSpeedValue, parseTag(
+            self.etags['EXIF ShutterSpeedValue'])))
+        main_ifd.tags.append(
+            dngTag(Tag.FocalLength, parseTag(self.etags['EXIF FocalLength'])))
+        main_ifd.tags.append(
+            dngTag(Tag.ExposureTime, parseTag(self.etags['EXIF ExposureTime'])))
+        main_ifd.tags.append(dngTag(Tag.DateTime, str(
+            self.etags['EXIF DateTimeDigitized'])))
+        main_ifd.tags.append(dngTag(Tag.PhotographicSensitivity, [
+                            int(str(self.etags['EXIF ISOSpeedRatings']))]))
+
+    def add_matrices(self, main_ifd):
+        rphq_str = ('RP_testc', 'imx477', 'RP_imx477')
+
+        if str(self.etags['Image Model']) in rphq_str:
+            profile = FMProfile(**IMX477)
+        else:
+            profile = Profile(**RASPI)
+        profile.write(main_ifd, self.maker_note)
+
+    def make_dng(self, dngTemplate, main_ifd):
+
+        dngTemplate.IFDs.append(main_ifd)
+        mainTagStripOffset = dngTag(
+            Tag.TileOffsets, [0])
+        main_ifd.tags.append(mainTagStripOffset)
+
+        totalLength = dngTemplate.dataLen()
+
+        mainTagStripOffset.setValue(
+            [k for offset, k in dngTemplate.StripOffsets.items()])
+
+        buf = bytearray(totalLength)
+        dngTemplate.setBuffer(buf)
+        dngTemplate.write()
+        return buf
+
+    def add_tile(self,dngTemplate, main_ifd, tile ):
+        dngTemplate.ImageDataStrips.append(tile)
+        main_ifd.tags.append(dngTag(Tag.TileByteCounts, [len(
+            tile) for tile in dngTemplate.ImageDataStrips]))
+
+    def convert(self, image, width=None, height=None, process=None, compress=False, bpp=None):
 
         file_output = False
 
@@ -264,177 +462,19 @@ class RPICAM2DNG:
         else:
             raise ValueError
 
-        rawFrame = self.__process__(image, process)
-        for k, v in self.etags.items():
-            try:
-                self.etags[k] = self.__exif__[k]
-            except KeyError:
-                self.etags[k] = 0
+        raw_frame = self.__process__(image, process)
+        self.get_exif_tags()
 
-        if not width:
-            width = int(self.header.width)
+        dngTemplate = DNG()
+        main_ifd = dngIFD()
 
-        if not length:
-            length = int(self.header.height)
+        tile = self.raw_frame2tile(main_ifd, raw_frame, width=width, height=height, compress=compress, bpp=bpp)
 
-        cfa_pattern = BAYER_ORDER[self.header.bayer_order]
-        camera_version = CAMERA_VERSION[str(self.etags['Image Model'])]
+        self.add_tile(dngTemplate, main_ifd, tile)
+        self.add_exif(main_ifd)
+        self.add_matrices(main_ifd)
 
-        sensor_bpp = SENSOR_NATIVE_BPP[str(self.etags['Image Model'])]
-        if not bpp:
-            bpp = sensor_bpp
-
-        sensor_black = 4096 >> (16 - bpp)
-        sensor_white = (1 << bpp) - 1
-
-        profile_name = "Standard Profile"
-        profile_embed = 3
-        fm = False
-
-        rphq_str = ('RP_testc', 'imx477', 'RP_imx477')
-
-        if str(self.etags['Image Model']) in rphq_str:
-
-            profile_name = "Repro 2_5D no LUT - D65 is really 5960K"
-
-            ccm1 = [[6759, 10000], [-2379, 10000], [751, 10000],
-                    [-4432, 10000], [13871, 10000], [5465, 10000],
-                    [-401, 10000], [1664, 10000], [7845, 10000]]
-
-            ccm2 = [[5603, 10000], [-1351, 10000], [-600, 10000],
-                    [-2872, 10000], [11180, 10000], [2132, 10000],
-                    [600, 10000], [453, 10000], [5821, 10000]]
-
-            fm = True
-
-            fm1 = [[7889, 10000], [1273, 10000], [482, 10000],
-                   [2401, 10000], [9705, 10000], [-2106, 10000],
-                   [-26, 10000], [-4406, 10000], [12683, 10000]]
-
-            fm2 = [[6591, 10000], [3034, 10000], [18, 10000],
-                   [1991, 10000], [10585, 10000], [-2575, 10000],
-                   [-493, 10000], [-919, 10000], [9663, 10000]]
-
-            ci1 = 17
-            ci2 = 21
-
-        else:
-            as_shot_neutral = [[10043, 10000], [16090, 10000], [10000, 10000]]
-
-            ccm1 = [[19549, 10000], [-7877, 10000], [-2582, 10000],
-                    [-5724, 10000], [10121, 10000], [1917, 10000],
-                    [-1267, 10000], [-110, 10000], [6621, 10000]]
-
-            ccm2 = [[13244, 10000], [-5501, 10000], [-1248, 10000],
-                    [-1508, 10000], [9858, 10000], [1935, 10000],
-                    [-270, 10000], [-1083, 10000], [4366, 10000]]
-            ci1 = 1
-            ci2 = 23
-
-        baseline_exp = 1
-        
-        camera_calibration = [[1, 1], [0, 1], [0, 1],
-                              [0, 1], [1, 1], [0, 1],
-                              [0, 1], [0, 1], [1, 1]]
-
-        if self.maker_note:
-            gain_r = int(float(self.maker_note['gain_r'])*1000)
-            gain_b = int(float(self.maker_note['gain_b'])*1000)
-
-            baseline_exp = int(self.maker_note['ev'])
-
-            as_shot_neutral = [[1000, gain_r], [1000, 1000], [1000, gain_b]]
-
-        compression_scheme = 7 if compress else 1
-
-        if compress:
-            from ljpegCompress import pack16tolj
-            tile = pack16tolj(rawFrame, int(width*2),
-                              int(length/2), bpp, 0, 0, 0, "", 6)
-        else:
-            if (bpp - sensor_bpp) >= 0:
-                rawFrame = rawFrame << (bpp - sensor_bpp)
-            else:
-                rawFrame = rawFrame >> abs(bpp - sensor_bpp)
-
-            if bpp == 8:
-                tile = (rawFrame//255).astype('uint8').tobytes()
-            elif bpp == 10:
-                tile = pack10(rawFrame).tobytes()
-            elif bpp == 12:
-                tile = pack12(rawFrame).tobytes()
-            elif bpp == 14:
-                tile = pack14(rawFrame).tobytes()
-            elif bpp == 16:
-                tile = rawFrame.tobytes()
-
-        dngTemplate.ImageDataStrips.append(tile)
-        # set up the FULL IFD
-        mainIFD = dngIFD()
-        mainTagStripOffset = dngTag(
-            Tag.TileOffsets, [0 for tile in dngTemplate.ImageDataStrips])
-        mainIFD.tags.append(mainTagStripOffset)
-        mainIFD.tags.append(dngTag(Tag.NewSubfileType, [0]))
-        mainIFD.tags.append(dngTag(Tag.TileByteCounts, [len(
-            tile) for tile in dngTemplate.ImageDataStrips]))
-        mainIFD.tags.append(dngTag(Tag.ImageWidth, [width]))
-        mainIFD.tags.append(dngTag(Tag.ImageLength, [length]))
-        mainIFD.tags.append(dngTag(Tag.SamplesPerPixel, [1]))
-        mainIFD.tags.append(dngTag(Tag.BitsPerSample, [bpp]))
-        mainIFD.tags.append(dngTag(Tag.TileWidth, [width]))
-        mainIFD.tags.append(dngTag(Tag.TileLength, [length]))
-        mainIFD.tags.append(dngTag(Tag.Compression, [compression_scheme]))
-        mainIFD.tags.append(dngTag(Tag.PhotometricInterpretation, [32803]))
-        mainIFD.tags.append(dngTag(Tag.CFARepeatPatternDim, [2, 2]))
-        mainIFD.tags.append(dngTag(Tag.CFAPattern, cfa_pattern))
-        mainIFD.tags.append(dngTag(Tag.BlackLevel, [sensor_black]))
-        mainIFD.tags.append(dngTag(Tag.WhiteLevel, [sensor_white]))
-        mainIFD.tags.append(dngTag(Tag.Make, str(self.etags['Image Make'])))
-        mainIFD.tags.append(dngTag(Tag.Model, str(self.etags['Image Model'])))
-        mainIFD.tags.append(
-            dngTag(Tag.ApertureValue, parseTag(self.etags['EXIF ApertureValue'])))
-        mainIFD.tags.append(dngTag(Tag.ShutterSpeedValue, parseTag(
-            self.etags['EXIF ShutterSpeedValue'])))
-        mainIFD.tags.append(
-            dngTag(Tag.FocalLength, parseTag(self.etags['EXIF FocalLength'])))
-        mainIFD.tags.append(
-            dngTag(Tag.ExposureTime, parseTag(self.etags['EXIF ExposureTime'])))
-        mainIFD.tags.append(dngTag(Tag.DateTime, str(
-            self.etags['EXIF DateTimeDigitized'])))
-        mainIFD.tags.append(dngTag(Tag.PhotographicSensitivity, [
-                            int(str(self.etags['EXIF ISOSpeedRatings']))]))
-        mainIFD.tags.append(dngTag(Tag.Software, "PyDNG"))
-        mainIFD.tags.append(dngTag(Tag.Orientation, [1]))
-        mainIFD.tags.append(dngTag(Tag.DNGVersion, [1, 4, 0, 0]))
-        mainIFD.tags.append(dngTag(Tag.DNGBackwardVersion, [1, 2, 0, 0]))
-        mainIFD.tags.append(dngTag(Tag.UniqueCameraModel, camera_version))
-        mainIFD.tags.append(dngTag(Tag.ColorMatrix1, ccm1))
-        mainIFD.tags.append(dngTag(Tag.ColorMatrix2, ccm2))
-        if fm:
-            mainIFD.tags.append(dngTag(Tag.ForwardMatrix1, fm1))
-            mainIFD.tags.append(dngTag(Tag.ForwardMatrix2, fm2))
-        mainIFD.tags.append(dngTag(Tag.CameraCalibration1, camera_calibration))
-        mainIFD.tags.append(dngTag(Tag.CameraCalibration2, camera_calibration))
-        mainIFD.tags.append(dngTag(Tag.AsShotNeutral, as_shot_neutral))
-        mainIFD.tags.append(dngTag(Tag.BaselineExposure, [[baseline_exp, 1]]))
-        mainIFD.tags.append(dngTag(Tag.CalibrationIlluminant1, [ci1]))
-        mainIFD.tags.append(dngTag(Tag.CalibrationIlluminant2, [ci2]))
-        mainIFD.tags.append(dngTag(Tag.ProfileName, profile_name))
-        mainIFD.tags.append(dngTag(Tag.ProfileEmbedPolicy, [profile_embed]))
-        # mainIFD.tags.append(dngTag(Tag.ProfileToneCurve   , [0.0,0.0,1.0,1.0]))
-        mainIFD.tags.append(dngTag(Tag.DefaultBlackRender, [0]))
-        mainIFD.tags.append(dngTag(Tag.PreviewColorSpace, [2]))
-
-        dngTemplate.IFDs.append(mainIFD)
-
-        totalLength = dngTemplate.dataLen()
-
-        mainTagStripOffset.setValue(
-            [k for offset, k in dngTemplate.StripOffsets.items()])
-
-        buf = bytearray(totalLength)
-        dngTemplate.setBuffer(buf)
-        dngTemplate.write()
+        buf = self.make_dng(dngTemplate, main_ifd)
 
         if file_output:
             outputDNG = image[:-4] + '.dng'
@@ -471,7 +511,7 @@ class RAW2DNG:
     def convert(self, image, tags, filename="image", path="", process=None, compress=False):
         dngTemplate = DNG()
 
-        rawFrame = self.__process__(image, process)
+        raw_frame = self.__process__(image, process)
 
         file_output = True
 
@@ -483,39 +523,39 @@ class RAW2DNG:
 
         if compress:
             from ljpegCompress import pack16tolj
-            tile = pack16tolj(rawFrame, int(width*2),
+            tile = pack16tolj(raw_frame, int(width*2),
                               int(length/2), bpp, 0, 0, 0, "", 6)
         else:
             if bpp == 8:
-                tile = rawFrame.astype('uint8').tobytes()
+                tile = raw_frame.astype('uint8').tobytes()
             elif bpp == 10:
-                tile = pack10(rawFrame).tobytes()
+                tile = pack10(raw_frame).tobytes()
             elif bpp == 12:
-                tile = pack12(rawFrame).tobytes()
+                tile = pack12(raw_frame).tobytes()
             elif bpp == 14:
-                tile = pack14(rawFrame).tobytes()
+                tile = pack14(raw_frame).tobytes()
             elif bpp == 16:
-                tile = rawFrame.tobytes()
+                tile = raw_frame.tobytes()
 
         dngTemplate.ImageDataStrips.append(tile)
         # set up the FULL IFD
-        mainIFD = dngIFD()
+        main_ifd = dngIFD()
         mainTagStripOffset = dngTag(
             Tag.TileOffsets, [0 for tile in dngTemplate.ImageDataStrips])
-        mainIFD.tags.append(mainTagStripOffset)
-        mainIFD.tags.append(dngTag(Tag.NewSubfileType, [0]))
-        mainIFD.tags.append(dngTag(Tag.TileByteCounts, [len(
+        main_ifd.tags.append(mainTagStripOffset)
+        main_ifd.tags.append(dngTag(Tag.NewSubfileType, [0]))
+        main_ifd.tags.append(dngTag(Tag.TileByteCounts, [len(
             tile) for tile in dngTemplate.ImageDataStrips]))
-        mainIFD.tags.append(dngTag(Tag.Compression, [compression_scheme]))
-        mainIFD.tags.append(dngTag(Tag.Software, "PyDNG"))
+        main_ifd.tags.append(dngTag(Tag.Compression, [compression_scheme]))
+        main_ifd.tags.append(dngTag(Tag.Software, "PyDNG"))
 
         for tag in tags.list():
             try:
-                mainIFD.tags.append(dngTag(tag[0], tag[1]))
+                main_ifd.tags.append(dngTag(tag[0], tag[1]))
             except Exception as e:
                 print("TAG Encoding Error!", e, tag)
 
-        dngTemplate.IFDs.append(mainIFD)
+        dngTemplate.IFDs.append(main_ifd)
 
         totalLength = dngTemplate.dataLen()
 
