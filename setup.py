@@ -14,7 +14,7 @@ setup(
     version="3.4.7",
     author="Csaba Nagy",
     description="Python utility for converting Raspberry Pi Camera RAW images into Adobe DNG Format.",
-    url="https://github.com/schoolpost/PyDNG",
+    url="https://github.com/schoolpost/PiDNG",
     packages=['pidng'],
     install_requires=[
         'numpy',

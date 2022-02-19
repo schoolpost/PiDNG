@@ -158,6 +158,7 @@ class dngTag(object):
         self.DataType = tagType[1]
         self.DataCount = len(value)
         self.DataOffset = 0
+        self.rawValue = value
 
         self.subIFD = None
         
