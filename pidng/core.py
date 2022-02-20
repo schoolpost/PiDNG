@@ -138,7 +138,7 @@ class CAM2DNG(DNGBASE):
 class RPICAM2DNG(CAM2DNG):
 
     def __data_condition__(self, data : np.ndarray)  -> None:
-        if data.dtype == np.uint16:
+        if data.dtype != np.uint8:
             raise Exception("RAW Data is not in correct format. Already unpacked? ")
 
     def __unpack_pixels__(self, data : np.ndarray) -> np.ndarray:
