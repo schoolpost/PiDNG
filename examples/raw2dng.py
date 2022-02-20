@@ -49,5 +49,5 @@ t.set(Tag.PreviewColorSpace, PreviewColorSpace.sRGB)
 
 # save to dng file.
 r = RAW2DNG()
-r.options(t, path="")
+r.options(t, path="", compress=True)
 r.convert(rawImage, filename="custom")

@@ -1,5 +1,4 @@
 import json
-from multiprocessing.spawn import import_main_path
 from .dng import DNGTags, Tag
 from .defs import *
 
@@ -15,9 +14,10 @@ class BaseCameraModel():
         self.tags = DNGTags()
         self.model = "BaseCameraModel"
 
+    # TODO
     def fromDict(dict : dict) -> None:  
         pass
-
+    # TODO
     def fromJson(jsn : str) -> None:
         parameters = json.loads(jsn)
 
@@ -82,8 +82,8 @@ class RaspberryPiHqCamera(BaseCameraModel):
                               [0, 1], [1, 1], [0, 1],
                               [0, 1], [0, 1], [1, 1]]
 
-        gain_r = 1000
-        gain_b = 1000
+        gain_r = 2500
+        gain_b = 2000
 
         as_shot_neutral = [[1000, gain_r], [1000, 1000], [1000, gain_b]]
 
@@ -121,7 +121,6 @@ class RaspberryPiHqCamera(BaseCameraModel):
         self.tags.set(Tag.Model, model)
         self.tags.set(Tag.ProfileName, profile_name)
         self.tags.set(Tag.ProfileEmbedPolicy, [profile_embed])
-
 
 
 # TODO

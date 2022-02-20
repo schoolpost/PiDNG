@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 from .dng import Type, Tag, dngHeader, dngIFD, dngTag, DNG, DNGTags
-from .defs import Compression
+from .defs import Compression, DNGVersion
 from .packing import *
 from .camdefs import BaseCameraModel
 
@@ -65,6 +65,8 @@ class DNGBASE:
             tile) for tile in dngTemplate.ImageDataStrips]))
         mainIFD.tags.append(dngTag(Tag.Compression, [compression_scheme]))
         mainIFD.tags.append(dngTag(Tag.Software, "PiDNG"))
+        mainIFD.tags.append(dngTag(Tag.DNGVersion, DNGVersion.V1_4))
+        mainIFD.tags.append(dngTag(Tag.DNGBackwardVersion, DNGVersion.V1_0))
 
         for tag in tags.list():
             try:
@@ -141,7 +143,7 @@ class RPICAM2DNG(CAM2DNG):
 
     def __unpack_pixels__(self, data : np.ndarray) -> np.ndarray:
 
-        height = self.model.tags.get(Tag.ImageLength).rawValue 
+        height = self.model.tags.get(Tag.ImageLength).rawValue[0] 
 
         ver = 6
         if  height == 1080:
@@ -161,8 +163,8 @@ class RPICAM2DNG(CAM2DNG):
             1: ((1952, 3264), (1944, 3240)),    # 2592x1944
             2: ((2480, 4128), (2464, 4100)),    # 3280x2464
             3: ((768, 1280),  (760, 1265)),     # 1012x760
-            4: ((1088, 3072), (1080, 3042)),    # 2028x1080
-            5: ((1536, 3072), (1520, 3042)),    # 2028x1520
+            4: ((1080, 3072), (1080, 3042)),    # 2028x1080
+            5: ((1520, 3072), (1520, 3042)),    # 2028x1520
             6: ((3056, 6112), (3040, 6084)),    # 4056x3040
             
         }[ver]
@@ -176,12 +178,9 @@ class RPICAM2DNG(CAM2DNG):
         else:
             data = data.astype(np.uint16)
             shape = data.shape
-            unpacked_data = np.zeros(
-                (shape[0], int(shape[1] / 3 * 2)), dtype=np.uint16)
-            unpacked_data[:, ::2] = (data[:, ::3] << 4) + \
-                (data[:, 2::3] & 0x0F)
-            unpacked_data[:, 1::2] = (
-                data[:, 1::3] << 4) + ((data[:, 2::3] >> 4) & 0x0F)
+            unpacked_data = np.zeros((shape[0], int(shape[1] / 3 * 2)), dtype=np.uint16)
+            unpacked_data[:, ::2] = (data[:, ::3] << 4) + (data[:, 2::3] & 0x0F)
+            unpacked_data[:, 1::2] = (data[:, 1::3] << 4) + ((data[:, 2::3] >> 4) & 0x0F)
             data = unpacked_data
-        return 
+        return data
 
