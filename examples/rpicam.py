@@ -2,11 +2,20 @@ from pidng.core import RPICAM2DNG, DNGTags, Tag
 from pidng.camdefs import *
 import numpy as np
 
-img = "frame_000032.raw"
+# load raw image data from file into numpy array. RAW frame from HQ camera. 
+img = "hq_camera_frame.raw"
 data = np.fromfile(img, dtype=np.uint8)
 
+# choose a predefined camera model, set the sensor mode and bayer layout. 
+# this camera model class sets the appropraite DNG's tags needed based on the camera sensor. ( needed for bit unpacking, color matrices )
 camera = RaspberryPiHqCamera(1, CFAPattern.BGGR)
 
+# example of adding custom DNG tags to predefined tags from camera model
+camera.tags.set(Tag.ApertureValue, [[4,1]])             # F 4.0
+camera.tags.set(Tag.ExposureTime, [[400,1]])            # SHUTTER 1/400
+camera.tags.set(Tag.PhotographicSensitivity, [400])     # ISO 400
+
+# pass camera reference into the converter.
 r = RPICAM2DNG(camera)
 r.options(path="", compress=True)
-r.convert(data, filename="custom2")
+r.convert(data, filename="output")
