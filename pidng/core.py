@@ -1,84 +1,32 @@
+import imp
 import os
 import numpy as np
 
-from .dng import Type, Tag, dngHeader, dngIFD, dngTag, DNG
-from .legacy import *
-from .defs import *
-
-def pack10(data):
-    out = np.zeros((data.shape[0], int(data.shape[1]*(1.25))), dtype=np.uint8)
-    out[:, ::5] = data[:, ::4] >> 2
-    out[:, 1::5] = ((data[:, ::4] & 0b0000000000000011) << 6)
-    out[:, 1::5] += data[:, 1::4] >> 4
-    out[:, 2::5] = ((data[:, 1::4] & 0b0000000000001111) << 4)
-    out[:, 2::5] += data[:, 2::4] >> 6
-    out[:, 3::5] = ((data[:, 2::4] & 0b0000000000111111) << 2)
-    out[:, 3::5] += data[:, 3::4] >> 8
-    out[:, 4::5] = data[:, 3::4] & 0b0000000011111111
-    return out
-
-def pack12(data):
-    out = np.zeros((data.shape[0], int(data.shape[1]*(1.5))), dtype=np.uint8)
-    out[:, ::3] = data[:, ::2] >> 4
-    out[:, 1::3] = ((data[:, ::2] & 0b0000000000001111) << 4)
-    out[:, 1::3] += data[:, 1::2] >> 8
-    out[:, 2::3] = data[:, 1::2] & 0b0000001111111111
-    return out
-
-def pack14(data):
-    out = np.zeros((data.shape[0], int(data.shape[1]*(1.75))), dtype=np.uint8)
-    out[:, ::7] = data[:, ::6] >> 6
-    out[:, 1::7] = ((data[:, ::6] & 0b0000000000000011) << 6)
-    out[:, 1::7] += data[:, 1::6] >> 8
-    out[:, 2::7] = ((data[:, 1::6] & 0b0000000000001111) << 4)
-    out[:, 2::7] += data[:, 2::6] >> 6
-    out[:, 3::7] = ((data[:, 2::6] & 0b0000000000111111) << 2)
-    out[:, 3::7] += data[:, 3::6] >> 8
-    out[:, 4::7] = ((data[:, 3::6] & 0b0000000000001111) << 4)
-    out[:, 4::7] += data[:, 4::6] >> 6
-    out[:, 5::7] = ((data[:, 4::6] & 0b0000000000111111) << 2)
-    out[:, 5::7] += data[:, 5::6] >> 8
-    out[:, 6::7] = data[:, 5::6] & 0b0000000011111111
-    return out
-
-class DNGTags:
-    def __init__(self):
-        self.__tags__ = dict()
-
-    def set(self, tag : Tag, value):        
-        if isinstance(value, int):
-            self.__tags__[tag] = dngTag(tag, [value])
-        else:
-            self.__tags__[tag] = dngTag(tag, value)
-
-    def get(self, tag):
-        try:
-            return self.__tags__[tag]
-        except KeyError:
-            return None
-
-    def list(self):
-        l = list()
-        for k, v in self.__tags__.items():
-            l.append(v)
-        return l
+from .dng import Type, Tag, dngHeader, dngIFD, dngTag, DNG, DNGTags
+from .defs import Compression
+from .packing import *
+from .camdefs import BaseCameraModel
 
 class DNGBASE:
-    def __init__(self):
-        pass
-    
-    def __data_condition__(self, data : np.ndarray):
-        if data.dtype != np.uint16:
-            raise Exception("RAW Data is not in correct format. Must be 16bit Numpy Array. ")
+    def __init__(self) -> None:
+        self.compress = None
+        self.path = None
+        self.tags = None
 
-    def __tags_condition__(self, tags : DNGTags):
+    def __data_condition__(self, data : np.ndarray)  -> None:
+        if data.dtype != np.uint16:
+            raise Exception("RAW Data is not in correct format. Must be uint16_t Numpy Array. ")
+
+    def __tags_condition__(self, tags : DNGTags)  -> None:
         if not tags.get(Tag.ImageWidth):
             raise Exception("No width is defined in tags.")
         if not tags.get(Tag.ImageLength):
             raise Exception("No height is defined in tags.")
         if not tags.get(Tag.BitsPerSample):
-            raise Exception("Bit per pixel is not defined.")        
+            raise Exception("Bit per pixel is not defined.")     
 
+    def __unpack_pixels__(self, data : np.ndarray) -> np.ndarray:
+        return data   
 
     def __process__(self, rawFrame : np.ndarray, tags: DNGTags, compress : bool) -> bytearray:
 
@@ -137,12 +85,21 @@ class DNGBASE:
 
         return buf
 
-    def convert(self, image : np.ndarray, tags : DNGTags, filename : str, path : str, compress=False):
+    def options(self, tags : DNGTags, path : str, compress=False) -> None:
+        self.__tags_condition__(tags)
+        self.tags = tags
+        self.compress = compress
+        self.path = path
+
+    def convert(self, image : np.ndarray, filename=""):
+
+        if self.tags is None:
+            raise Exception("Options have not been set!")
         
         # valdify incoming data
         self.__data_condition__(image)
-        self.__tags_condition__(tags)
-        buf = self.__process__(image, tags, compress)
+        unpacked = self.__unpack_pixels__(image)
+        buf = self.__process__(unpacked, self.tags, self.compress)
 
         file_output = False
         if len(filename) > 0:
@@ -151,7 +108,7 @@ class DNGBASE:
         if file_output:
             if not filename.endswith(".dng"):
                 filename = filename + '.dng'
-            outputDNG = os.path.join(path, filename)
+            outputDNG = os.path.join(self.path, filename)
             with open(outputDNG, "wb") as outfile:
                 outfile.write(buf)
             return outputDNG
@@ -160,19 +117,71 @@ class DNGBASE:
 
 
 class RAW2DNG(DNGBASE):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
 
-class RPI2DNG(DNGBASE):
-    def __init__(self):
+class CAM2DNG(DNGBASE):
+    def __init__(self, model : BaseCameraModel) -> None:
         super().__init__()
-        self.model = None
-        
-    def __unpack_pixels__(data : np.ndarray) -> np.ndarray:
-        return np.ndarray()
+        self.model = model
 
-class RASPIRAW2DNG(DNGBASE):
-    def __init__(self):
-        super().__init__()
+    def options(self, path : str, compress=False) -> None:
+        self.__tags_condition__(self.model.tags)
+        self.tags = self.model.tags
+        self.compress = compress
+        self.path = path
+
+
+class RPICAM2DNG(CAM2DNG):
+
+    def __data_condition__(self, data : np.ndarray)  -> None:
+        if data.dtype == np.uint16:
+            raise Exception("RAW Data is not in correct format. Already unpacked? ")
+
+    def __unpack_pixels__(self, data : np.ndarray) -> np.ndarray:
+
+        height = self.model.tags.get(Tag.ImageLength).rawValue 
+
+        ver = 6
+        if  height == 1080:
+            ver = 4
+        elif height == 1520:
+            ver = 5
+        elif height == 3040:
+            ver = 6
+        elif height == 760:
+            ver = 3
+        elif height == 2464:
+            ver = 2
+        elif height == 1944:
+            ver = 1
+
+        reshape, crop = {
+            1: ((1952, 3264), (1944, 3240)),    # 2592x1944
+            2: ((2480, 4128), (2464, 4100)),    # 3280x2464
+            3: ((768, 1280),  (760, 1265)),     # 1012x760
+            4: ((1088, 3072), (1080, 3042)),    # 2028x1080
+            5: ((1536, 3072), (1520, 3042)),    # 2028x1520
+            6: ((3056, 6112), (3040, 6084)),    # 4056x3040
+            
+        }[ver]
+        data = data.reshape(reshape)[:crop[0], :crop[1]]
+
+        if ver < 4:
+            data = data.astype(np.uint16) << 2
+            for byte in range(4):
+                data[:, byte::5] |= ((data[:, 4::5] >> ((byte+1) * 2)) & 0b11)
+            data = np.delete(data, np.s_[4::5], 1)
+        else:
+            data = data.astype(np.uint16)
+            shape = data.shape
+            unpacked_data = np.zeros(
+                (shape[0], int(shape[1] / 3 * 2)), dtype=np.uint16)
+            unpacked_data[:, ::2] = (data[:, ::3] << 4) + \
+                (data[:, 2::3] & 0x0F)
+            unpacked_data[:, 1::2] = (
+                data[:, 1::3] << 4) + ((data[:, 2::3] >> 4) & 0x0F)
+            data = unpacked_data
+        return 
 

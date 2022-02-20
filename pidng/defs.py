@@ -8,6 +8,19 @@ class Compression:
     LJ92 = 7 #Lossless JPEG
     Lossy_JPEG = 34892
 
+class PreviewColorSpace:
+    Unknown = 0
+    Gray_Gamma_22 = 1
+    sRGB = 2
+    Adobe_RGB = 3
+    ProPhoto_RGB = 4
+
+class Orientation:
+    Horizontal = 1
+    MirrorH = 2
+    Rotate180 = 3
+    MirrorV = 4
+
 class DNGVersion:
     V1_0 = [1, 0, 0, 0]
     V1_1 = [1, 1, 0, 0]

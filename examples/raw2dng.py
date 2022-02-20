@@ -1,9 +1,7 @@
 from pidng.core import RAW2DNG, DNGTags, Tag
+from pidng.defs import *
 import numpy as np
 import struct
-
-from pidng.defs import *
-
 
 # image specs
 width = 4096
@@ -31,7 +29,7 @@ t.set(Tag.ImageWidth, width)
 t.set(Tag.ImageLength, height)
 t.set(Tag.TileWidth, width)
 t.set(Tag.TileLength, height)
-t.set(Tag.Orientation, 1)
+t.set(Tag.Orientation, Orientation.Horizontal)
 t.set(Tag.PhotometricInterpretation, PhotometricInterpretation.Color_Filter_Array)
 t.set(Tag.SamplesPerPixel, 1)
 t.set(Tag.BitsPerSample, bpp)
@@ -43,11 +41,13 @@ t.set(Tag.ColorMatrix1, ccm1)
 t.set(Tag.CalibrationIlluminant1, CalibrationIlluminant.D65)
 t.set(Tag.AsShotNeutral, [[1,1],[1,1],[1,1]])
 t.set(Tag.BaselineExposure, [[-150,100]])
-t.set(Tag.DNGVersion, DNGVersion.V1_4)
-t.set(Tag.DNGBackwardVersion, DNGVersion.V1_2)
 t.set(Tag.Make, "Camera Brand")
 t.set(Tag.Model, "Camera Model")
-t.set(Tag.PreviewColorSpace, 2)
+t.set(Tag.DNGVersion, DNGVersion.V1_4)
+t.set(Tag.DNGBackwardVersion, DNGVersion.V1_2)
+t.set(Tag.PreviewColorSpace, PreviewColorSpace.sRGB)
 
 # save to dng file.
-RAW2DNG().convert(rawImage, t, filename="custom", path="")
+r = RAW2DNG()
+r.options(t, path="")
+r.convert(rawImage, filename="custom")

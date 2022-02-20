@@ -142,7 +142,28 @@ class Tag:
     BaselineExposureOffset      = (51109,Type.Srational) # 1.4 Spec says rational but mentions negative values?
     DefaultBlackRender          = (51110,Type.Long)
     NewRawImageDigest           = (51111,Type.Byte)
-    
+
+class DNGTags:
+    def __init__(self):
+        self.__tags__ = dict()
+
+    def set(self, tag : Tag, value):        
+        if isinstance(value, int):
+            self.__tags__[tag] = dngTag(tag, [value])
+        else:
+            self.__tags__[tag] = dngTag(tag, value)
+
+    def get(self, tag):
+        try:
+            return self.__tags__[tag]
+        except KeyError:
+            return None
+
+    def list(self):
+        l = list()
+        for k, v in self.__tags__.items():
+            l.append(v)
+        return l
     
 class dngHeader(object):
     def __init__(self):
