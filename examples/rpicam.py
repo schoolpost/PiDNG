@@ -12,7 +12,7 @@ camera = RaspberryPiHqCamera(1, CFAPattern.BGGR)
 
 # example of adding custom DNG tags to predefined tags from camera model
 camera.tags.set(Tag.ApertureValue, [[4,1]])             # F 4.0
-camera.tags.set(Tag.ExposureTime, [[400,1]])            # SHUTTER 1/400
+camera.tags.set(Tag.ExposureTime, [[1,400]])             # SHUTTER 1/400
 camera.tags.set(Tag.PhotographicSensitivity, [400])     # ISO 400
 
 # pass camera reference into the converter.
