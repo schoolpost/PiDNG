@@ -2,7 +2,7 @@ import warnings
 import os
 import numpy as np
 import types
-from .dng import Type, Tag, dngHeader, dngIFD, dngTag, DNG, DNGTags
+from .dng import Tag, dngIFD, dngTag, DNG, DNGTags
 from .defs import Compression, DNGVersion
 from .packing import *
 from .camdefs import BaseCameraModel

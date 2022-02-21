@@ -1,9 +1,5 @@
 # from distutils.core import setup, Extension
 from setuptools import setup, Extension
-import setuptools
-import os
-import shutil
-import platform
 
 
 ljpeg92 = Extension('ljpegCompress', sources=[
@@ -18,7 +14,6 @@ setup(
     packages=['pidng'],
     install_requires=[
         'numpy',
-        'exifread',
     ],
     ext_modules=[ljpeg92],
     python_requires='>=3.5',

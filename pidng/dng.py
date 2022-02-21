@@ -1,12 +1,4 @@
 import struct
-import sys
-import os, io
-import time
-import array
-import getopt
-import platform
-import operator
-import errno
 
 class Type:
     # TIFF Type Format = (Tag TYPE value, Size in bytes of one instance)
