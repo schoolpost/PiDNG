@@ -1,7 +1,7 @@
 import imp
 import os
 import numpy as np
-
+import types
 from .dng import Type, Tag, dngHeader, dngIFD, dngTag, DNG, DNGTags
 from .defs import Compression, DNGVersion
 from .packing import *
@@ -12,6 +12,7 @@ class DNGBASE:
         self.compress = None
         self.path = None
         self.tags = None
+        self.filter = None
 
     def __data_condition__(self, data : np.ndarray)  -> None:
         if data.dtype != np.uint16:
@@ -27,6 +28,22 @@ class DNGBASE:
 
     def __unpack_pixels__(self, data : np.ndarray) -> np.ndarray:
         return data   
+
+    def __filter__(self, rawFrame: np.ndarray, filter : types.FunctionType) -> np.ndarray:
+
+        if not filter:
+            return rawFrame
+
+        processed = filter(rawFrame)
+        if not isinstance(processed, np.ndarray):
+            raise TypeError("return value is not a valid numpy array!")
+        elif processed.shape != rawFrame.shape:
+            raise ValueError("return array does not have the same shape!")
+        if processed.dtype != np.uint16:
+            raise ValueError("array data type is invalid!")
+
+        return processed
+
 
     def __process__(self, rawFrame : np.ndarray, tags: DNGTags, compress : bool) -> bytearray:
 
@@ -101,6 +118,7 @@ class DNGBASE:
         # valdify incoming data
         self.__data_condition__(image)
         unpacked = self.__unpack_pixels__(image)
+        filtered = self.__filter__(unpacked, self.filter)
         buf = self.__process__(unpacked, self.tags, self.compress)
 
         file_output = False

@@ -7,7 +7,7 @@ img = "hq_camera_frame.raw"
 data = np.fromfile(img, dtype=np.uint8)
 
 # choose a predefined camera model, set the sensor mode and bayer layout. 
-# this camera model class sets the appropraite DNG's tags needed based on the camera sensor. ( needed for bit unpacking, color matrices )
+# this camera model class sets the appropriate DNG's tags needed based on the camera sensor. ( needed for bit unpacking, color matrices )
 camera = RaspberryPiHqCamera(1, CFAPattern.BGGR)
 
 # example of adding custom DNG tags to predefined tags from camera model
@@ -15,7 +15,13 @@ camera.tags.set(Tag.ApertureValue, [[4,1]])             # F 4.0
 camera.tags.set(Tag.ExposureTime, [[1,400]])             # SHUTTER 1/400
 camera.tags.set(Tag.PhotographicSensitivity, [400])     # ISO 400
 
+# example of passing a filter over the rawframe before it is saved. This will simply print the dimensions of the file. 
+def print_dimensions(rawFrame):
+    print(rawFrame.shape)
+    return rawFrame
+
 # pass camera reference into the converter.
 r = RPICAM2DNG(camera)
 r.options(path="", compress=True)
+r.filter = print_dimensions
 r.convert(data, filename="output")
