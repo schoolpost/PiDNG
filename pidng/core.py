@@ -1,4 +1,4 @@
-import imp
+import warnings
 import os
 import numpy as np
 import types
@@ -157,9 +157,12 @@ class RPICAM2DNG(CAM2DNG):
 
     def __data_condition__(self, data : np.ndarray)  -> None:
         if data.dtype != np.uint8:
-            raise Exception("RAW Data is not in correct format. Already unpacked? ")
+            warnings.warn("RAW Data is not in correct format. Already unpacked? ")
 
     def __unpack_pixels__(self, data : np.ndarray) -> np.ndarray:
+
+        if data.dtype != np.uint8:
+            return data
 
         height = self.model.tags.get(Tag.ImageLength).rawValue[0] 
 

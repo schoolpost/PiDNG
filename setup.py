@@ -11,7 +11,7 @@ ljpeg92 = Extension('ljpegCompress', sources=[
 
 setup(
     name="pidng",
-    version="3.4.7",
+    version="4.0.0",
     author="Csaba Nagy",
     description="Python utility for converting Raspberry Pi Camera RAW images into Adobe DNG Format.",
     url="https://github.com/schoolpost/PiDNG",
