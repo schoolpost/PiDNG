@@ -15,7 +15,7 @@ camera.tags.set(Tag.ApertureValue, [[4,1]])             # F 4.0
 camera.tags.set(Tag.ExposureTime, [[1,400]])             # SHUTTER 1/400
 camera.tags.set(Tag.PhotographicSensitivity, [400])     # ISO 400
 
-# example of passing a filter over the rawframe before it is saved. This will simply print the dimensions of the file. 
+# example of passing a filter over the rawframe before it is saved. This will simply print the dimensions of the raw image. 
 def print_dimensions(rawFrame):
     print(rawFrame.shape)
     return rawFrame
