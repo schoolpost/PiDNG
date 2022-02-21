@@ -119,7 +119,7 @@ class DNGBASE:
         self.__data_condition__(image)
         unpacked = self.__unpack_pixels__(image)
         filtered = self.__filter__(unpacked, self.filter)
-        buf = self.__process__(unpacked, self.tags, self.compress)
+        buf = self.__process__(filtered, self.tags, self.compress)
 
         file_output = False
         if len(filename) > 0:
