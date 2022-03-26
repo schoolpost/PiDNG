@@ -1,4 +1,5 @@
 import json
+import re
 from .dng import DNGTags, Tag
 from .defs import *
 
@@ -14,9 +15,13 @@ class BaseCameraModel():
         self.tags = DNGTags()
         self.model = "BaseCameraModel"
 
+    def __settings__(self) -> None:
+        pass
+
     # TODO
     def fromDict(dict : dict) -> None:  
         pass
+
     # TODO
     def fromJson(jsn : str) -> None:
         parameters = json.loads(jsn)
@@ -26,6 +31,87 @@ class BaseCameraModel():
 
     def __str__(self) -> str:
         return str(self.model)
+
+class Picamera2Camera(BaseCameraModel):
+    def __init__(self, fmt : dict, metadata: dict) -> None:
+        super().__init__() 
+        self.model = "Picamera2Model"
+        self.fmt = fmt
+        self.metadata = metadata
+        self.__settings__()
+
+    def __settings__(self) -> None:
+        print(self.fmt)
+        print(self.metadata)
+
+        width, height = self.fmt["size"]
+        fmt_str = self.fmt["format"].split("_")[0]
+        bpp = int(re.search(r'\d+', fmt_str).group())
+
+        black_levels = list()
+        for val in self.metadata["SensorBlackLevels"]:
+            black_levels.append((val >> (16 - bpp)))
+        
+
+        camera_calibration = [[1, 1], [0, 1], [0, 1],
+                              [0, 1], [1, 1], [0, 1],
+                              [0, 1], [0, 1], [1, 1]]
+
+        color_gain_div = 10000
+        gain_r, gain_b = self.metadata["ColourGains"]
+        gain_r = int(gain_r * color_gain_div)
+        gain_b = int(gain_b * color_gain_div)
+        as_shot_neutral = [[color_gain_div, gain_r], [color_gain_div, color_gain_div], [color_gain_div, gain_b]]
+
+        ccm1 = list()
+        ccm = self.metadata["ColourCorrectionMatrix"]
+        for color in ccm:
+            ccm1.append((int(color*color_gain_div), color_gain_div))
+
+        ci1 = CalibrationIlluminant.D65
+
+        baseline_exp = 1
+
+        model = "PiDNG / PiCamera2"
+        make = "RaspberryPi"
+
+        profile_name = "PiDNG / PiCamera2 Profile"
+        profile_embed = 3
+
+        self.orientation = 1
+        if "BGGR" in fmt_str:
+            self.cfaPattern = CFAPattern.BGGR
+        elif "GBRG" in fmt_str:
+            self.cfaPattern = CFAPattern.GBRG
+        elif "GRBG" in fmt_str:
+            self.cfaPattern = CFAPattern.GRBG
+        elif "RGGB" in fmt_str:
+            self.cfaPattern = CFAPattern.RGGB
+
+        # self.tags.set(Tag.RawDataUniqueID, [self.metadata["SensorTimestamp"]])
+        self.tags.set(Tag.ImageWidth, width)
+        self.tags.set(Tag.ImageLength, height)
+        self.tags.set(Tag.TileWidth, width)
+        self.tags.set(Tag.TileLength, height)
+        self.tags.set(Tag.Orientation, self.orientation)
+        self.tags.set(Tag.PhotometricInterpretation, PhotometricInterpretation.Color_Filter_Array)
+        self.tags.set(Tag.SamplesPerPixel, 1)
+        self.tags.set(Tag.BitsPerSample, bpp)
+        self.tags.set(Tag.CFARepeatPatternDim, [2,2])
+        self.tags.set(Tag.CFAPattern, self.cfaPattern)
+        self.tags.set(Tag.BlackLevelRepeatDim, [2,2])
+        self.tags.set(Tag.BlackLevel, black_levels)
+        self.tags.set(Tag.WhiteLevel, ((1 << bpp) -1) )
+        self.tags.set(Tag.ColorMatrix1, ccm1)
+        self.tags.set(Tag.CameraCalibration1, camera_calibration)
+        self.tags.set(Tag.CameraCalibration2, camera_calibration)
+        self.tags.set(Tag.CalibrationIlluminant1, ci1)
+        self.tags.set(Tag.BaselineExposure, [[baseline_exp,1]])
+        self.tags.set(Tag.AsShotNeutral, as_shot_neutral)
+        self.tags.set(Tag.Make, make)
+        self.tags.set(Tag.Model, model)
+        self.tags.set(Tag.ProfileName, profile_name)
+        self.tags.set(Tag.ProfileEmbedPolicy, [profile_embed])
         
 class RaspberryPiHqCamera(BaseCameraModel):
     def __init__(self, sensor_mode : int, cfaPattern=CFAPattern.BGGR, orientation=Orientation.Horizontal) -> None:

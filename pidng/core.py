@@ -154,7 +154,6 @@ class CAM2DNG(DNGBASE):
 
 
 class RPICAM2DNG(CAM2DNG):
-
     def __data_condition__(self, data : np.ndarray)  -> None:
         if data.dtype != np.uint8:
             warnings.warn("RAW Data is not in correct format. Already unpacked? ")
@@ -186,7 +185,7 @@ class RPICAM2DNG(CAM2DNG):
             3: ((768, 1280),  (760, 1265)),     # 1012x760
             4: ((1080, 3072), (1080, 3042)),    # 2028x1080
             5: ((1520, 3072), (1520, 3042)),    # 2028x1520
-            6: ((3056, 6112), (3040, 6084)),    # 4056x3040
+            6: ((3040, 6112), (3040, 6084)),    # 4056x3040
             
         }[ver]
         data = data.reshape(reshape)[:crop[0], :crop[1]]
@@ -204,4 +203,14 @@ class RPICAM2DNG(CAM2DNG):
             unpacked_data[:, 1::2] = (data[:, 1::3] << 4) + ((data[:, 2::3] >> 4) & 0x0F)
             data = unpacked_data
         return data
+
+class PICAM2DNG(RPICAM2DNG):
+    """For use within picamera2 library"""
+    def options(self, compress=False) -> None:
+        self.__tags_condition__(self.model.tags)
+        self.tags = self.model.tags
+        self.compress = compress
+        self.path = ""
+    
+
 

@@ -135,6 +135,13 @@ class Tag:
     DefaultBlackRender          = (51110,Type.Long)
     NewRawImageDigest           = (51111,Type.Byte)
 
+    #CinemaDNG Tags
+    FrameRate                   = (51044,Type.Srational)
+    TimeCodes                   = (51043,Type.Byte)
+    TStop                       = (51058,Type.Rational)
+    ReelName                    = (51081,Type.Ascii)
+    CameraLabel                 = (51105,Type.Ascii)
+
 class DNGTags:
     def __init__(self):
         self.__tags__ = dict()
