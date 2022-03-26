@@ -88,7 +88,12 @@ class Picamera2Camera(BaseCameraModel):
         elif "RGGB" in fmt_str:
             self.cfaPattern = CFAPattern.RGGB
 
-        # self.tags.set(Tag.RawDataUniqueID, [self.metadata["SensorTimestamp"]])
+        exposure_time = int(1/(self.metadata["ExposureTime"] * 0.000001))
+        iso = int(self.metadata["AnalogueGain"] * 100)
+
+        self.tags.set(Tag.PhotographicSensitivity, [iso]) 
+        self.tags.set(Tag.ExposureTime, [[1,exposure_time]])  
+        self.tags.set(Tag.RawDataUniqueID, str(self.metadata["SensorTimestamp"]).encode("ascii"))
         self.tags.set(Tag.ImageWidth, width)
         self.tags.set(Tag.ImageLength, height)
         self.tags.set(Tag.TileWidth, width)
