@@ -41,9 +41,7 @@ class Picamera2Camera(BaseCameraModel):
         self.__settings__()
 
     def __settings__(self) -> None:
-        print(self.fmt)
-        print(self.metadata)
-
+        
         width, height = self.fmt["size"]
         fmt_str = self.fmt["format"].split("_")[0]
         bpp = int(re.search(r'\d+', fmt_str).group())
@@ -52,7 +50,6 @@ class Picamera2Camera(BaseCameraModel):
         for val in self.metadata["SensorBlackLevels"]:
             black_levels.append((val >> (16 - bpp)))
         
-
         camera_calibration = [[1, 1], [0, 1], [0, 1],
                               [0, 1], [1, 1], [0, 1],
                               [0, 1], [0, 1], [1, 1]]
