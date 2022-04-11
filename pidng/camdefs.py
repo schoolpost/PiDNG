@@ -41,13 +41,13 @@ class Picamera2Camera(BaseCameraModel):
         self.__settings__()
 
     def __settings__(self) -> None:
-        
+
         width, height = self.fmt["size"]
         fmt_str = self.fmt["format"].split("_")[0]
         bpp = int(re.search(r'\d+', fmt_str).group())
 
         black_levels = list()
-        for val in self.metadata["SensorBlackLevels"]:
+        for val in self.metadata.get("SensorBlackLevels", (0)):
             black_levels.append((val >> (16 - bpp)))
         
         camera_calibration = [[1, 1], [0, 1], [0, 1],
@@ -55,7 +55,7 @@ class Picamera2Camera(BaseCameraModel):
                               [0, 1], [0, 1], [1, 1]]
 
         color_gain_div = 10000
-        gain_r, gain_b = self.metadata["ColourGains"]
+        gain_r, gain_b = self.metadata.get("ColourGains",(color_gain_div, color_gain_div))
         gain_r = int(gain_r * color_gain_div)
         gain_b = int(gain_b * color_gain_div)
         as_shot_neutral = [[color_gain_div, gain_r], [color_gain_div, color_gain_div], [color_gain_div, gain_b]]
