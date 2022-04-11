@@ -86,7 +86,8 @@ class Picamera2Camera(BaseCameraModel):
             self.cfaPattern = CFAPattern.RGGB
 
         exposure_time = int(1/(self.metadata["ExposureTime"] * 0.000001))
-        iso = int(self.metadata["AnalogueGain"] * 100)
+        total_gain = self.metadata["AnalogueGain"] * self.metadata["DigitalGain"]
+        iso = int(total_gain * 100)
 
         self.tags.set(Tag.PhotographicSensitivity, [iso]) 
         self.tags.set(Tag.ExposureTime, [[1,exposure_time]])  
