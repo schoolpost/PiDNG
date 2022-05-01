@@ -4,7 +4,7 @@ PiDNG
 
 Create Adobe DNG RAW files using Python.
 
-![](https://raw.githubusercontent.com/schoolpost/PiDNG/master/docs/demo.jpg)
+![](docs/demo.jpg)
 
 **Features**
 ------------
@@ -20,7 +20,7 @@ Create Adobe DNG RAW files using Python.
 
 *Raspberry Pi High Quality Camera examples below ( DNG top, JPEG bottom )*
 
-![](https://raw.githubusercontent.com/schoolpost/PiDNG/master/docs/collage.jpg)
+![](docs/collage.jpg)
 
 ***
 
@@ -30,8 +30,6 @@ Instructions
 Requires: 
 - Python3 
 - Numpy  
-- ExifRead
-
 
 ### Install
 
@@ -46,37 +44,12 @@ Latest version from GitHub:
 python3 -mpip install  git+https://github.com/schoolpost/PiDNG.git
 ```
 
-Install via Poetry:
-
-Per command line in your poetry environment:
-```
-poetry add PiDNG 
-```
-Or add in to your pyproject.toml file:
-
-```
-[tool.poetry.dependencies]
-...
-PiDNG = "^3.4.5"
-```
-
 
 ### How to use:
 
 ```
 
-# examples
-from pidng.core import RPICAM2DNG
 
-# use file string input to the jpeg+raw file. 
-d = RPICAM2DNG()
-d.convert('imx477.jpg')
-
-
-# the included command line utility can be used as shown below
-Utility.py:
-  python3 examples/utility.py <options> <inputFilename> 
-  python3 examples/utility.py imx477.jpg  
 
 ```
 
