@@ -1,3 +1,9 @@
+#PiDNG Specific
+*.dng
+.dng
+*.raw
+.raw
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

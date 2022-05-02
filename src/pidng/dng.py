@@ -1,12 +1,4 @@
 import struct
-import sys
-import os, io
-import time
-import array
-import getopt
-import platform
-import operator
-import errno
 
 class Type:
     # TIFF Type Format = (Tag TYPE value, Size in bytes of one instance)
@@ -142,7 +134,35 @@ class Tag:
     BaselineExposureOffset      = (51109,Type.Srational) # 1.4 Spec says rational but mentions negative values?
     DefaultBlackRender          = (51110,Type.Long)
     NewRawImageDigest           = (51111,Type.Byte)
-    
+
+    #CinemaDNG Tags
+    FrameRate                   = (51044,Type.Srational)
+    TimeCodes                   = (51043,Type.Byte)
+    TStop                       = (51058,Type.Rational)
+    ReelName                    = (51081,Type.Ascii)
+    CameraLabel                 = (51105,Type.Ascii)
+
+class DNGTags:
+    def __init__(self):
+        self.__tags__ = dict()
+
+    def set(self, tag : Tag, value):        
+        if isinstance(value, int):
+            self.__tags__[tag] = dngTag(tag, [value])
+        else:
+            self.__tags__[tag] = dngTag(tag, value)
+
+    def get(self, tag):
+        try:
+            return self.__tags__[tag]
+        except KeyError:
+            return None
+
+    def list(self):
+        l = list()
+        for k, v in self.__tags__.items():
+            l.append(v)
+        return l
     
 class dngHeader(object):
     def __init__(self):
@@ -158,6 +178,7 @@ class dngTag(object):
         self.DataType = tagType[1]
         self.DataCount = len(value)
         self.DataOffset = 0
+        self.rawValue = value
 
         self.subIFD = None
         
