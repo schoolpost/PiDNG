@@ -1,5 +1,5 @@
 # from distutils.core import setup, Extension
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -9,22 +9,25 @@ ljpeg92 = Extension('ljpegCompress', sources=[
 
 setup(
     name="pidng",
-    version="4.0.0",
+    include_package_data=True,
+    version="4.0.5",
     author="Csaba Nagy",
     description="Python utility for creating Adobe DNG files from RAW image data.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/schoolpost/PiDNG",
-    packages=['pidng'],
     install_requires=[
         'numpy',
     ],
     classifiers=[
-        "Programming Language :: Python :: 3",
+        'Development Status :: 4 - Beta',
+        "Topic :: Multimedia :: Graphics :: Capture :: Digital Camera",
+        "Topic :: Multimedia :: Graphics :: Graphics Conversion",
+        "Programming Language :: Python :: 3.6",
         "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
     ],
     ext_modules=[ljpeg92],
     package_dir={"": "src"},
+    packages=find_packages(where="src"),
     python_requires='>=3.6',
 )

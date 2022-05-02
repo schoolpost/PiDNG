@@ -1,10 +1,10 @@
 PiDNG
 =========
-![](https://img.shields.io/badge/Version-3.4.7-green.svg)
+![](https://img.shields.io/badge/Version-4.0.5-green.svg)
 
 Create Adobe DNG RAW files using Python.
 
-![](docs/demo.jpg)
+<!-- ![](docs/demo.jpg) -->
 
 **Features**
 ------------
@@ -18,9 +18,9 @@ Create Adobe DNG RAW files using Python.
 - IMX219 ( Raspberry Pi Camera Module V2 )
 - IMX477( Raspberry Pi High Quality Camera )
 
-*Raspberry Pi High Quality Camera examples below ( DNG top, JPEG bottom )*
+<!-- *Raspberry Pi High Quality Camera examples below ( DNG top, JPEG bottom )* -->
 
-![](docs/collage.jpg)
+<!-- ![](docs/collage.jpg) -->
 
 ***
 
@@ -43,22 +43,6 @@ Latest version from GitHub:
 ```
 python3 -mpip install  git+https://github.com/schoolpost/PiDNG.git
 ```
-
-
-### How to use:
-
-```
-
-
-
-```
-
-***
-
-TODO
-------------
-
-- SUB IFDS/THUMBNAILS
 
 ***
 
