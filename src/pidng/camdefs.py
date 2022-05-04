@@ -1,5 +1,6 @@
 import json
 import re
+import numpy as np
 from .dng import DNGTags, Tag
 from .defs import *
 
@@ -56,13 +57,23 @@ class Picamera2Camera(BaseCameraModel):
 
         color_gain_div = 10000
         gain_r, gain_b = self.metadata.get("ColourGains",(color_gain_div, color_gain_div))
+        gain_matrix = np.array([[gain_r, 0, 0],
+                                [0, 1.0, 0],
+                                [0, 0, gain_b]])
         gain_r = int(gain_r * color_gain_div)
         gain_b = int(gain_b * color_gain_div)
         as_shot_neutral = [[color_gain_div, gain_r], [color_gain_div, color_gain_div], [color_gain_div, gain_b]]
 
         ccm1 = list()
         ccm = self.metadata["ColourCorrectionMatrix"]
-        for color in ccm:
+	# This maxtrix from http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
+        rgb_to_xyz = np.array([[0.4124564, 0.3575761, 0.1804375],
+		               [0.2126729, 0.7151522, 0.0721750],
+		               [0.0193339, 0.1191920, 0.9503041]])
+        ccm_matrix = np.array(ccm).reshape((3, 3))
+        ccm = np.linalg.inv(rgb_to_xyz.dot(ccm_matrix).dot(gain_matrix))
+
+        for color in ccm.flatten().tolist():
             ccm1.append((int(color*color_gain_div), color_gain_div))
 
         ci1 = CalibrationIlluminant.D65
