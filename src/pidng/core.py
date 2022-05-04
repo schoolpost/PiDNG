@@ -163,39 +163,19 @@ class RPICAM2DNG(CAM2DNG):
         if data.dtype != np.uint8:
             return data
 
-        height = self.model.tags.get(Tag.ImageLength).rawValue[0] 
+        width, height = self.model.fmt.get("size", (0,0))
+        stride = self.model.fmt.get("stride", 0)
+        bpp = self.model.fmt.get("bpp", 8)
+        bytes_per_row = int(width * (bpp / 8))
 
-        ver = 6
-        if  height == 1080:
-            ver = 4
-        elif height == 1520:
-            ver = 5
-        elif height == 3040:
-            ver = 6
-        elif height == 760:
-            ver = 3
-        elif height == 2464:
-            ver = 2
-        elif height == 1944:
-            ver = 1
+        data = data[:height, :bytes_per_row]
 
-        reshape, crop = {
-            1: ((1952, 3264), (1944, 3240)),    # 2592x1944
-            2: ((2480, 4128), (2464, 4100)),    # 3280x2464
-            3: ((768, 1280),  (760, 1265)),     # 1012x760
-            4: ((1080, 3072), (1080, 3042)),    # 2028x1080
-            5: ((1520, 3072), (1520, 3042)),    # 2028x1520
-            6: ((3040, 6112), (3040, 6084)),    # 4056x3040
-            
-        }[ver]
-        data = data.reshape(reshape)[:crop[0], :crop[1]]
-
-        if ver < 4:
+        if bpp == 10:
             data = data.astype(np.uint16) << 2
             for byte in range(4):
                 data[:, byte::5] |= ((data[:, 4::5] >> ((byte+1) * 2)) & 0b11)
             data = np.delete(data, np.s_[4::5], 1)
-        else:
+        elif bpp == 12:
             data = data.astype(np.uint16)
             shape = data.shape
             unpacked_data = np.zeros((shape[0], int(shape[1] / 3 * 2)), dtype=np.uint16)

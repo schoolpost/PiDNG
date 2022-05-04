@@ -46,6 +46,7 @@ class Picamera2Camera(BaseCameraModel):
         width, height = self.fmt["size"]
         fmt_str = self.fmt["format"].split("_")[0]
         bpp = int(re.search(r'\d+', fmt_str).group())
+        self.fmt["bpp"] = bpp
 
         black_levels = list()
         for val in self.metadata.get("SensorBlackLevels", (0)):

@@ -1,6 +1,6 @@
 PiDNG
 =========
-![](https://img.shields.io/badge/Version-4.0.5-green.svg)
+![](https://img.shields.io/badge/Version-4.0.7-green.svg)
 
 Create Adobe DNG RAW files using Python.
 
