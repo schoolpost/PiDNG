@@ -43,8 +43,8 @@ class Picamera2Camera(BaseCameraModel):
 
     def __settings__(self) -> None:
 
-        width, height = self.fmt["size"]
-        fmt_str = self.fmt["format"].split("_")[0]
+        width, height = self.fmt.get("size", (0,0))
+        fmt_str = self.fmt.get("format","").split("_")[0]
         bpp = int(re.search(r'\d+', fmt_str).group())
         self.fmt["bpp"] = bpp
 

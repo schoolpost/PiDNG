@@ -166,22 +166,31 @@ class RPICAM2DNG(CAM2DNG):
         width, height = self.model.fmt.get("size", (0,0))
         stride = self.model.fmt.get("stride", 0)
         bpp = self.model.fmt.get("bpp", 8)
-        bytes_per_row = int(width * (bpp / 8))
 
+        # check to see if stored packed or unpacked format
+        if "CSI2P" in self.model.fmt.get("format", ""):
+            s_bpp = bpp         # stored_bitperpixel
+        else:
+            s_bpp = 16
+
+        bytes_per_row = int(width * (s_bpp / 8))
         data = data[:height, :bytes_per_row]
 
-        if bpp == 10:
+        if s_bpp == 10:
             data = data.astype(np.uint16) << 2
             for byte in range(4):
                 data[:, byte::5] |= ((data[:, 4::5] >> ((byte+1) * 2)) & 0b11)
             data = np.delete(data, np.s_[4::5], 1)
-        elif bpp == 12:
+        elif s_bpp == 12:
             data = data.astype(np.uint16)
             shape = data.shape
             unpacked_data = np.zeros((shape[0], int(shape[1] / 3 * 2)), dtype=np.uint16)
             unpacked_data[:, ::2] = (data[:, ::3] << 4) + (data[:, 2::3] & 0x0F)
             unpacked_data[:, 1::2] = (data[:, 1::3] << 4) + ((data[:, 2::3] >> 4) & 0x0F)
             data = unpacked_data
+        elif s_bpp == 16:
+            data = np.ascontiguousarray(data, dtype=np.uint8)
+    
         return data
 
 class PICAM2DNG(RPICAM2DNG):
