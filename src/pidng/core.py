@@ -189,7 +189,7 @@ class RPICAM2DNG(CAM2DNG):
             unpacked_data[:, 1::2] = (data[:, 1::3] << 4) + ((data[:, 2::3] >> 4) & 0x0F)
             data = unpacked_data
         elif s_bpp == 16:
-            data = np.ascontiguousarray(data, dtype=np.uint8)
+            data = np.ascontiguousarray(data).view(np.uint16)
     
         return data
 
