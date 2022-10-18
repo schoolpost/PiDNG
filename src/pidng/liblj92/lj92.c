@@ -35,6 +35,16 @@ typedef uint32_t u32;
 //#define SLOW_HUFF
 //#define DEBUG
 
+#if defined(__clang__)
+    #define _clz __builtin_clz
+#elif defined(__GNUC__) || defined(__GNUG__)
+    #define _clz __builtin_clz
+#elif defined(_MSC_VER)
+    #define _clz __lzcnt
+#else
+    #error Could not find builtin clz function
+#endif
+
 typedef struct _ljp {
     u8* data;
     u8* dataend;
@@ -758,7 +768,7 @@ int frequencyScan(lje* self) {
         else
             Px = rows[0][col] + ((rows[1][col-1] - rows[0][col-1])>>1);
         diff = rows[1][col] - Px;
-        int ssss = 32 - __builtin_clz(abs(diff));
+        int ssss = 32 - _clz(abs(diff));
         if (diff==0) ssss=0;
         self->hist[ssss]++;
         //printf("%d %d %d %d %d %d\n",col,row,p,Px,diff,ssss);
@@ -1033,7 +1043,7 @@ void writeBody(lje* self) {
             Px = rows[0][col] + ((rows[1][col-1] - rows[0][col-1])>>1);
         diff = rows[1][col] - Px % 65535;
 
-        int ssss = 32 - __builtin_clz(abs(diff));
+        int ssss = 32 - _clz(abs(diff));
         if (diff==0) ssss=0;
         //printf("%d %d %d %d %d\n",col,row,Px,diff,ssss);
 

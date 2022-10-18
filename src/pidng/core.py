@@ -75,10 +75,10 @@ class DNGBASE:
         # set up the FULL IFD
         mainIFD = dngIFD()
         mainTagStripOffset = dngTag(
-            Tag.TileOffsets, [0 for tile in dngTemplate.ImageDataStrips])
+            Tag.StripOffsets, [0 for tile in dngTemplate.ImageDataStrips])
         mainIFD.tags.append(mainTagStripOffset)
         mainIFD.tags.append(dngTag(Tag.NewSubfileType, [0]))
-        mainIFD.tags.append(dngTag(Tag.TileByteCounts, [len(
+        mainIFD.tags.append(dngTag(Tag.StripByteCounts, [len(
             tile) for tile in dngTemplate.ImageDataStrips]))
         mainIFD.tags.append(dngTag(Tag.Compression, [compression_scheme]))
         mainIFD.tags.append(dngTag(Tag.Software, "PiDNG"))
