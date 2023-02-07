@@ -1,3 +1,4 @@
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include "liblj92/lj92.h"
 
@@ -5,14 +6,14 @@ static PyObject*
 bitunpack_unpackljto16(PyObject* self, PyObject *args)
 {
     unsigned const char* input = 0;
-    int inlen = 0;
+    Py_ssize_t inlen = 0;
     char* output;
-    int outlen = 0;
+    Py_ssize_t outlen = 0;
     int outindex = 0;
     int outwrite = 0;
     int outskip = 0;
     unsigned const char* lin = 0;
-    int linlen = 0;
+    Py_ssize_t linlen = 0;
 
     if (!PyArg_ParseTuple(args, "t#w#iiit#", &input, &inlen, &output, &outlen,
         &outindex, &outwrite, &outskip, &lin, &linlen))
@@ -41,7 +42,7 @@ static PyObject*
 bitunpack_pack16tolj(PyObject* self, PyObject *args)
 {
     unsigned const char* input = 0;
-    int inlen = 0;
+    Py_ssize_t inlen = 0;
     int width = 0;
     int height = 0;
     int bitdepth = 0;
@@ -49,7 +50,7 @@ bitunpack_pack16tolj(PyObject* self, PyObject *args)
     int inread = 0;
     int inskip = 0;
     unsigned const char* delin = 0;
-    int delinlen = 0;
+    Py_ssize_t delinlen = 0;
     int ljPredictor = 6;
 
     if (!PyArg_ParseTuple(args, "y#iiiiiis#i", &input, &inlen,
