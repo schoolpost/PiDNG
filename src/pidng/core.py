@@ -3,7 +3,7 @@ import os
 import numpy as np
 import types
 from .dng import Tag, dngIFD, dngTag, DNG, DNGTags
-from .defs import Compression, DNGVersion
+from .defs import Compression, DNGVersion, SampleFormat
 from .packing import *
 from .camdefs import BaseCameraModel
 
@@ -15,8 +15,8 @@ class DNGBASE:
         self.filter = None
 
     def __data_condition__(self, data : np.ndarray)  -> None:
-        if data.dtype != np.uint16:
-            raise Exception("RAW Data is not in correct format. Must be uint16_t Numpy Array. ")
+        if data.dtype != np.uint16 and data.dtype != np.float32:
+            raise Exception("RAW Data is not in correct format. Must be uint16_t or float32_t Numpy Array. ")
 
     def __tags_condition__(self, tags : DNGTags)  -> None:
         if not tags.get(Tag.ImageWidth):
@@ -53,6 +53,16 @@ class DNGBASE:
 
         compression_scheme = Compression.LJ92 if compress else Compression.Uncompressed
 
+        sample_format = SampleFormat.Uint
+        backward_version = DNGVersion.V1_0
+        if rawFrame.dtype == np.float32:
+            sample_format = SampleFormat.FloatingPoint
+            # Floating-point data requires DNG 1.4
+            backward_version = DNGVersion.V1_4
+            # Floating-point data has to be compressed with deflate
+            if compress:
+                raise Exception('Compression is not supported for floating-point data')
+
         if compress:
             from ljpegCompress import pack16tolj
             tile = pack16tolj(rawFrame, int(width*2),
@@ -66,7 +76,8 @@ class DNGBASE:
                 tile = pack12(rawFrame).tobytes()
             elif bpp == 14:
                 tile = pack14(rawFrame).tobytes()
-            elif bpp == 16:
+            else:
+                # 16-bit integers or 32-bit floats
                 tile = rawFrame.tobytes()
         
         dngTemplate = DNG()
@@ -83,7 +94,8 @@ class DNGBASE:
         mainIFD.tags.append(dngTag(Tag.Compression, [compression_scheme]))
         mainIFD.tags.append(dngTag(Tag.Software, "PiDNG"))
         mainIFD.tags.append(dngTag(Tag.DNGVersion, DNGVersion.V1_4))
-        mainIFD.tags.append(dngTag(Tag.DNGBackwardVersion, DNGVersion.V1_0))
+        mainIFD.tags.append(dngTag(Tag.DNGBackwardVersion, backward_version))
+        mainIFD.tags.append(dngTag(Tag.SampleFormat, [sample_format]))
 
         for tag in tags.list():
             try:

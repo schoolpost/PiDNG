@@ -23,6 +23,7 @@ class Tag:
     ImageWidth                  = (256,Type.Long)
     ImageLength                 = (257,Type.Long)
     BitsPerSample               = (258,Type.Short)
+    SampleFormat                = (339,Type.Short)
     Compression                 = (259,Type.Short)
     PhotometricInterpretation   = (262,Type.Short)
     FillOrder                   = (266,Type.Short)
