@@ -66,3 +66,9 @@ class CalibrationIlluminant:
     D50 = 23
     ISO_Studio_Tungsten = 24
     Other = 255
+
+# DMG 1.4 allows only Uint and FloatingPoint
+class SampleFormat:
+    Uint = 1
+    Int = 2
+    FloatingPoint = 3
