@@ -130,6 +130,7 @@ class Tag:
     FrameRate                   = (51044,Type.Srational)
     OpcodeList1                 = (51008,Type.Undefined)
     OpcodeList2                 = (51009,Type.Undefined)
+    OpcodeList3                 = (51022,Type.Undefined)
     ReelName                    = (51081,Type.Ascii)
     BaselineExposureOffset      = (51109,Type.Srational) # 1.4 Spec says rational but mentions negative values?
     DefaultBlackRender          = (51110,Type.Long)
