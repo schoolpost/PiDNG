@@ -3,16 +3,21 @@ from threading import Thread
 import datetime
 import os
 
-def record() {
+DEFAULT_WRITE_LOCATION = '/media/matthewverde/RAW/'
+
+def record():
     recordingTime = '1000'
     framerate = '15'
     gain = '5.0'
     filename = 'image'
 
     now = datetime.datetime.now()
-    os.mkdir(now)
-    cwd = os.getcwd()
-    outputLocation = os.path.join(cwd, f'{now}/{filename}%05d.raw')
+    newDirName = f'rpicam-raw-{now.day}-{now.month}-{now.year}--{now.hour}.{now.minute}.{now.second}'
+    newDirLocation = os.path.join(DEFAULT_WRITE_LOCATION, newDirName)
+    os.mkdir(newDirLocation)
+    outputLocation = os.path.join(newDirLocation, f'{filename}%05d.raw')
 
-    process = subprocess.Popen(['rpicam-raw', f'-t {recordingTime}', '--segment 1', f'-o {outputLocation}', f'--framerate {framerate}', f'--gain {gain}'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-}
+    process = subprocess.run(['rpicam-raw', '-t', recordingTime, '--segment', '1', '-o', outputLocation, '--framerate', framerate, '--gain', gain], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print(process)
+
+record()
