@@ -1,4 +1,5 @@
 import subprocess
+from pathlib import Path
 from threading import Thread
 import datetime
 import os
@@ -21,7 +22,7 @@ class RpiCam():
         self.framerate = framerate
         self.recordingTime = recordingTime
         self.outputLocation = self.DEFAULT_WRITE_LOCATION
-        self.rawFilePrefix = f'ss{self.shutterSpeed}gain{self.analogGain}---'
+        self.setRawFilePrefix()
         self.cameraName = 'imx477'
         self.bit = '12'
         self.format = 'SRGGB12_CSI2P'
@@ -36,7 +37,7 @@ class RpiCam():
         return newDirLocation
 
     def getRpiCamOutputFilePath(self, parentPath):
-        return os.path.join(parentPath, f'{self.rawFilePrefix}%05d.raw')
+        return os.path.join(parentPath, f'{self.bayerFilterString}{self.rawFilePrefix}%05d.raw')
 
     def setBayerFilter(self, colorPattern):
         pattern = []
@@ -49,6 +50,17 @@ class RpiCam():
                 pattern.append(BayerFilterValue.R)
         self.bayerFilter = pattern
         self.bayerFilterString = colorPattern
+    
+    def setShutterSpeed(self, value):
+        self.shutterSpeed = value
+        self.setRawFilePrefix()
+
+    def setGain(self, value):
+        self.analogGain = value
+        self.setRawFilePrefix()
+
+    def setRawFilePrefix(self):
+        self.rawFilePrefix = f'ss{self.shutterSpeed}gain{self.analogGain}---'
     
     def setMode(self, modeToSet):
         if(modeToSet == 1):
@@ -87,9 +99,11 @@ class RpiCam():
         parentDir = self.getParentDirectoryForRecording()
         rawOutputFilePath = self.getRpiCamOutputFilePath(parentDir)
         processArguments = ['rpicam-raw', '-t', self.recordingTime, '--segment', '1', '-o', rawOutputFilePath, '--framerate', self.framerate, '--gain', self.analogGain, '--shutter', self.shutterSpeed, '--width', self.width, '--height', self.height]
+        # processArguments = ['rpicam-raw', '-t', self.recordingTime, '--segment', '1', '-o', rawOutputFilePath, '--framerate', self.framerate, '--gain', self.analogGain, '--width', self.width, '--height', self.height]
         print('*** Starting Recording ***')
+        print(f'cmd: {" ".join(processArguments)}')
         process = subprocess.run(processArguments, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print('*** DONE ***')
+        print('*** Recording Finshed ***')
         print('*** Converting raw files to dng ***')
         dngConverter = PiDngManager(self)
         dngConverter.convert(parentDir, True)
@@ -98,7 +112,6 @@ class RpiCam():
 
 class CommandHandler(cmd.Cmd):
     prompt = ">>> "
-    cam = RpiCam('100', '1.0', '10', '1000')
 
     def __init__(self, cam):
         super().__init__()
@@ -108,13 +121,13 @@ class CommandHandler(cmd.Cmd):
         self.cam.framerate = arg
 
     def do_gain(self, arg):
-        self.cam.analogGain = arg
+        self.cam.setGain(arg)
 
     def do_rec_time(self, arg):
         self.cam.recordingTime = arg
 
     def do_shutter_speed(self, arg):
-        self.cam.shutterSpeed = arg
+        self.cam.setShutterSpeed(arg)
 
     def do_config(self, arg):
         self.cam.printConfig()
@@ -151,17 +164,48 @@ class PiDngManager():
         # pass camera reference into the converter.
         r = RPICAM2DNG(camera)
         r.options(path=dirToConvert, compress=False)
+        if(self.cam.bayerFilter == [BayerFilterValue.R, BayerFilterValue.R, BayerFilterValue.R, BayerFilterValue.R]):
+            r.filter = self.redShiftFilter
+        else:
+            r.filter = self.noOpFilter
         print(f'Converting raw files in {dirToConvert} to DNG')
         for dirpath, dirnames, filenames in os.walk(dirToConvert):
             if(convertAll):
                 for filename in filenames:
+                    print(f'Converting: {filename} to DNG')
+                    fileNameDng = Path(filename).with_suffix(".dng")
                     data = np.fromfile(os.path.join(dirToConvert, filename), dtype=np.uint8)
                     data = data.reshape((int(self.cam.height), int(self.cam.stride)))
-                    r.convert(data, filename=os.path.join(dirToConvert, filename))
-        print(f'Conversion Done')
+                    r.convert(data, filename=os.path.join(dirToConvert, fileNameDng))
+
+    def noOpFilter(self, rawFrame):
+        return rawFrame
+
+    def redShiftFilter(self, rawFrame):
+        height, width = rawFrame.shape
+        for x in range(0, width): # width
+            for y in range(0, height): # height
+                if(y % 2 == 0):
+                    if(x % 2 == 0): # blue
+                        # get nearest red
+                        targetRedX =  x + 1
+                        targetRedY = y + 1
+                    else: # green
+                        targetRedX =  x
+                        targetRedY = y + 1
+                else:
+                    if(x % 2 == 0): # green
+                        targetRedX =  x + 1
+                        targetRedY = y
+                    else: # red
+                        targetRedX =  x
+                        targetRedY = y
+                rawFrame[y][x] = rawFrame[targetRedY][targetRedX]
+        return rawFrame
 
 def main():
-    cam = RpiCam('100', '1.0', '10', '1000')
+    # shutterSpeed (microseconds), analogGain, framerate, recordingTime
+    cam = RpiCam('100000', '1.0', '10', '1000')
     commandHandler = CommandHandler(cam)
     commandHandler.cmdloop()
 
