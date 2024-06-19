@@ -28,6 +28,8 @@ class RpiCam():
         self.format = 'SRGGB12_CSI2P'
         self.setBayerFilter('BGGR')
         self.setMode(3)
+        self.quickFilter = 't'
+        self.convertToDng = 't'
 
     def getParentDirectoryForRecording(self):
         now = datetime.datetime.now()
@@ -99,14 +101,14 @@ class RpiCam():
         parentDir = self.getParentDirectoryForRecording()
         rawOutputFilePath = self.getRpiCamOutputFilePath(parentDir)
         processArguments = ['rpicam-raw', '-t', self.recordingTime, '--segment', '1', '-o', rawOutputFilePath, '--framerate', self.framerate, '--gain', self.analogGain, '--shutter', self.shutterSpeed, '--width', self.width, '--height', self.height]
-        # processArguments = ['rpicam-raw', '-t', self.recordingTime, '--segment', '1', '-o', rawOutputFilePath, '--framerate', self.framerate, '--gain', self.analogGain, '--width', self.width, '--height', self.height]
         print('*** Starting Recording ***')
         print(f'cmd: {" ".join(processArguments)}')
         process = subprocess.run(processArguments, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print('*** Recording Finshed ***')
-        print('*** Converting raw files to dng ***')
-        dngConverter = PiDngManager(self)
-        dngConverter.convert(parentDir, True)
+        if(self.convertToDng == 't'):
+            print('*** Converting raw files to dng ***')
+            dngConverter = PiDngManager(self)
+            dngConverter.convert(parentDir, True)
 
 
 
@@ -141,10 +143,16 @@ class CommandHandler(cmd.Cmd):
     def do_filter(self, arg):
         self.cam.setBayerFilter(arg)
 
+    def do_quick_filter(self, arg):
+        self.cam.quickFilter = arg
+
+    def do_convert(self, arg):
+        self.cam.convertToDng = arg
+
     def do_exit(self, arg):
         return True
 
-
+MICROSECONDS_PER_SECOND = 1000000
 
 class PiDngManager():
     def __init__(self, cam):
@@ -152,9 +160,10 @@ class PiDngManager():
 
     def convert(self, dirToConvert, convertAll):
         camera = RaspberryPiHqCamera(self.cam.mode, self.cam.bayerFilter)
-        camera.tags.set(Tag.ApertureValue, [[4,1]])             # F 4.0
-        camera.tags.set(Tag.ExposureTime, [[1,300]])             # SHUTTER 1/400
-        camera.tags.set(Tag.PhotographicSensitivity, [1000])     # ISO 400
+        # camera.tags.set(Tag.ApertureValue, [[4,1]])             # F 4.0
+        # camera.tags.set(Tag.PhotographicSensitivity, [1000])     # ISO 400
+        exposureTimeDenominator = int(int(self.cam.shutterSpeed) / MICROSECONDS_PER_SECOND)
+        camera.tags.set(Tag.ExposureTime, [[1,exposureTimeDenominator]])
         camera.fmt = dict({
             # tuple is in the form width height
             'size': (int(self.cam.width), int(self.cam.height)),
@@ -165,7 +174,11 @@ class PiDngManager():
         r = RPICAM2DNG(camera)
         r.options(path=dirToConvert, compress=False)
         if(self.cam.bayerFilter == [BayerFilterValue.R, BayerFilterValue.R, BayerFilterValue.R, BayerFilterValue.R]):
-            r.filter = self.redShiftFilter
+            if(self.cam.quickFilter != 't'):
+                # slow as shit
+                r.filter = self.medianRedShiftFilter
+            else:
+                r.filter = self.redShiftFilter
         else:
             r.filter = self.noOpFilter
         print(f'Converting raw files in {dirToConvert} to DNG')
@@ -201,6 +214,26 @@ class PiDngManager():
                         targetRedX =  x
                         targetRedY = y
                 rawFrame[y][x] = rawFrame[targetRedY][targetRedX]
+        return rawFrame
+
+    # slow as shit
+    def medianRedShiftFilter(self, rawFrame):
+        height, width = rawFrame.shape
+        for col in range(1, width): # width
+            for row in range(1, height): # height
+                if(row % 2 == 0):
+                    if(col % 2 == 0): # blue
+                        # get nearest red
+                        reds = [rawFrame[row - 1][col - 1], rawFrame[row - 1][col + 1], rawFrame[row + 1][col - 1], rawFrame[row + 1][col + 1]]
+                    else: # green
+                        reds = [rawFrame[row - 1][col], rawFrame[row + 1][col]]
+                else:
+                    if(col % 2 == 0): # green
+                        reds = [rawFrame[row][col - 1], rawFrame[row][col + 1]]
+                    else: # red
+                        reds = [rawFrame[row][col]]
+                average = int(sum(reds) / len(reds))
+                rawFrame[row][col] = average
         return rawFrame
 
 def main():
