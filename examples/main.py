@@ -4,6 +4,7 @@ from threading import Thread
 import datetime
 import os
 import cmd
+from flask import Flask
 
 from pidng.core import RPICAM2DNG, DNGTags, Tag
 from pidng.camdefs import *
@@ -84,7 +85,7 @@ class RpiCam():
             print(f'mode but be the value 1, 2, or 3. Got: {modeToSet}')
 
     def printConfig(self):
-        print(f'''
+        configString = f'''
             *** Cam Config ***\n
             camera name: {self.cameraName}\n
             bayer filter: {self.bayerFilterString}\n
@@ -95,7 +96,9 @@ class RpiCam():
             size: {self.width}x{self.height}\n
             mode: {self.mode}\n
             bit: {self.bit}
-        ''')
+        '''
+        print(configString)
+        return configString
 
     def record(self):
         parentDir = self.getParentDirectoryForRecording()
@@ -236,9 +239,21 @@ class PiDngManager():
                 rawFrame[row][col] = average
         return rawFrame
 
+# app = Flask(__name__)
+# globalCam = RpiCam('100000', '1.0', '10', '1000')
+# @app.route('/api/config/')
+# def get_config():
+#     return globalCam.printConfig()
+
+# @app.route('/')
+# def get_wow():
+#     print('wow')
+#     return 'hello'
+
 def main():
     # shutterSpeed (microseconds), analogGain, framerate, recordingTime
-    cam = RpiCam('100000', '1.0', '10', '1000')
+    cam = RpiCam('1200', '0.5', '10', '1000')
+    # app.run(debug=True, host='0.0.0.0', port=8080)
     commandHandler = CommandHandler(cam)
     commandHandler.cmdloop()
 
