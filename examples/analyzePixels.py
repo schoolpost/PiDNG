@@ -82,6 +82,7 @@ unpackedPixels = r.__unpack_pixels__(data)
 getColorArrays(unpackedPixels)
 
 plt.figure(figsize=(12, 8))
+# set blue green or red global array here
 plt.boxplot(globalGreenArray)
 plt.show()
 

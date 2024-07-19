@@ -163,9 +163,9 @@ def normalizePixels(rawFrame):
     green_data_odd_rows = rawFrame[1::2, ::2]
     blue_data = rawFrame[::2, ::2]
 
-    red_conditional = red_data < 400
-    green_even_row_conditional = green_data_even_rows < 270
-    green_odd_row_conditional = green_data_odd_rows < 270
+    red_conditional = red_data > 1100
+    green_even_row_conditional = green_data_even_rows < 400
+    green_odd_row_conditional = green_data_odd_rows < 400
     blue_conditional = blue_data < 300
 
     normalized_green_on_even_rows = (abs(green_data_even_rows - IMX477_BLACK_LEVEL) * GREEN_PIXEL_MULTIPLIER) + IMX477_BLACK_LEVEL
@@ -192,7 +192,7 @@ def normalizePixels(rawFrame):
     newFrame[1::2, ::2] = green_data_odd_rows
 
     # red
-    newFrame[1::2, 1::2] = red_data
+    newFrame[1::2, 1::2] = modified_red_data
 
     return newFrame
 
@@ -200,7 +200,7 @@ def normalizePixels(rawFrame):
 r = RPICAM2DNG(camera)
 r.options(path="C:/Users/matth/code/PiDNG/rpicam-raw-20-6-2024--13.0.24", compress=False)
 r.filter = normalizePixels
-r.convert(data, filename="./red-modx-1-normalized-comparable-green2")
+r.convert(data, filename="./red-modx-1-red-bean")
 
 # blueDataToPlot = np.ascontiguousarray(globalBlueArray).view(np.uint16)
 # plt.figure(figsize=(12, 8))
