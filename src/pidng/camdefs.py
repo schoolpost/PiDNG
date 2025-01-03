@@ -57,7 +57,7 @@ class Picamera2Camera(BaseCameraModel):
                               [0, 1], [0, 1], [1, 1]]
 
         color_gain_div = 10000
-        gain_r, gain_b = self.metadata.get("ColourGains",(color_gain_div, color_gain_div))
+        gain_r, gain_b = self.metadata.get("ColourGains",(1.0, 1.0))
         gain_matrix = np.array([[gain_r, 0, 0],
                                 [0, 1.0, 0],
                                 [0, 0, gain_b]])
@@ -66,7 +66,7 @@ class Picamera2Camera(BaseCameraModel):
         as_shot_neutral = [[color_gain_div, gain_r], [color_gain_div, color_gain_div], [color_gain_div, gain_b]]
 
         ccm1 = list()
-        ccm = self.metadata["ColourCorrectionMatrix"]
+        ccm = self.metadata.get("ColourCorrectionMatrix", (1, 0, 0, 0, 1, 0, 0, 0, 1))
 	# This maxtrix from http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
         rgb_to_xyz = np.array([[0.4124564, 0.3575761, 0.1804375],
 		               [0.2126729, 0.7151522, 0.0721750],
