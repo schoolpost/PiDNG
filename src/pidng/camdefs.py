@@ -88,6 +88,7 @@ class Picamera2Camera(BaseCameraModel):
         profile_embed = 3
 
         self.orientation = 1
+        self.cfaPattern = None
         if "BGGR" in fmt_str:
             self.cfaPattern = CFAPattern.BGGR
         elif "GBRG" in fmt_str:
@@ -109,24 +110,32 @@ class Picamera2Camera(BaseCameraModel):
         self.tags.set(Tag.TileWidth, width)
         self.tags.set(Tag.TileLength, height)
         self.tags.set(Tag.Orientation, self.orientation)
-        self.tags.set(Tag.PhotometricInterpretation, PhotometricInterpretation.Color_Filter_Array)
         self.tags.set(Tag.SamplesPerPixel, 1)
         self.tags.set(Tag.BitsPerSample, bpp)
-        self.tags.set(Tag.CFARepeatPatternDim, [2,2])
-        self.tags.set(Tag.CFAPattern, self.cfaPattern)
-        self.tags.set(Tag.BlackLevelRepeatDim, [2,2])
-        self.tags.set(Tag.BlackLevel, black_levels)
         self.tags.set(Tag.WhiteLevel, ((1 << bpp) -1) )
-        self.tags.set(Tag.ColorMatrix1, ccm1)
-        self.tags.set(Tag.CameraCalibration1, camera_calibration)
-        self.tags.set(Tag.CameraCalibration2, camera_calibration)
-        self.tags.set(Tag.CalibrationIlluminant1, ci1)
         self.tags.set(Tag.BaselineExposure, [[baseline_exp,1]])
-        self.tags.set(Tag.AsShotNeutral, as_shot_neutral)
         self.tags.set(Tag.Make, make)
         self.tags.set(Tag.Model, model)
         self.tags.set(Tag.ProfileName, profile_name)
         self.tags.set(Tag.ProfileEmbedPolicy, [profile_embed])
+
+        if self.cfaPattern:
+            # For colour Bayer sensors
+            self.tags.set(Tag.BlackLevelRepeatDim, [2,2])
+            self.tags.set(Tag.BlackLevel, black_levels)
+            self.tags.set(Tag.PhotometricInterpretation, PhotometricInterpretation.Color_Filter_Array)
+            self.tags.set(Tag.CFARepeatPatternDim, [2,2])
+            self.tags.set(Tag.CFAPattern, self.cfaPattern)
+            self.tags.set(Tag.ColorMatrix1, ccm1)
+            self.tags.set(Tag.CameraCalibration1, camera_calibration)
+            self.tags.set(Tag.CameraCalibration2, camera_calibration)
+            self.tags.set(Tag.CalibrationIlluminant1, ci1)
+            self.tags.set(Tag.AsShotNeutral, as_shot_neutral)
+        else:
+            # For mono raw sensors
+            self.tags.set(Tag.BlackLevelRepeatDim, [1,1])
+            self.tags.set(Tag.BlackLevel, [black_levels[0]])
+            self.tags.set(Tag.PhotometricInterpretation, PhotometricInterpretation.Linear_Raw)
         
 class RaspberryPiHqCamera(BaseCameraModel):
     def __init__(self, sensor_mode : int, cfaPattern=CFAPattern.BGGR, orientation=Orientation.Horizontal) -> None:
