@@ -107,8 +107,6 @@ class Picamera2Camera(BaseCameraModel):
         self.tags.set(Tag.RawDataUniqueID, str(self.metadata["SensorTimestamp"]).encode("ascii"))
         self.tags.set(Tag.ImageWidth, width)
         self.tags.set(Tag.ImageLength, height)
-        self.tags.set(Tag.TileWidth, width)
-        self.tags.set(Tag.TileLength, height)
         self.tags.set(Tag.Orientation, self.orientation)
         self.tags.set(Tag.SamplesPerPixel, 1)
         self.tags.set(Tag.BitsPerSample, bpp)
@@ -207,8 +205,6 @@ class RaspberryPiHqCamera(BaseCameraModel):
 
         self.tags.set(Tag.ImageWidth, width)
         self.tags.set(Tag.ImageLength, height)
-        self.tags.set(Tag.TileWidth, width)
-        self.tags.set(Tag.TileLength, height)
         self.tags.set(Tag.Orientation, self.orientation)
         self.tags.set(Tag.PhotometricInterpretation, PhotometricInterpretation.Color_Filter_Array)
         self.tags.set(Tag.SamplesPerPixel, 1)
