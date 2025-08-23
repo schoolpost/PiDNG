@@ -45,7 +45,7 @@ class DNGBASE:
         return processed
 
 
-    def __process__(self, rawFrame : np.ndarray, tags: DNGTags, compress : bool) -> bytearray:
+    def __process__(self, rawFrame : np.ndarray, tags: DNGTags, compress : bool, predictor: int = 6) -> bytearray:
 
         width = tags.get(Tag.ImageWidth).rawValue[0]
         length = tags.get(Tag.ImageLength).rawValue[0]
@@ -61,12 +61,20 @@ class DNGBASE:
             backward_version = DNGVersion.V1_4
             # Floating-point data has to be compressed with deflate
             if compress:
-                raise Exception('Compression is not supported for floating-point data')
+                raise Exception("Compression is not supported for floating-point data")
 
         if compress:
             from ljpegCompress import pack16tolj
-            tile = pack16tolj(rawFrame, int(width*2),
-                              int(length/2), bpp, 0, 0, 0, "", 6)
+
+            if predictor == 1:
+                tile = pack16tolj(rawFrame, int(width),
+                                  int(length), bpp, 0, 0, 0, "", 1)
+            elif predictor == 6:
+                tile = pack16tolj(rawFrame, int(width*2),
+                                  int(length/2), bpp, 0, 0, 0, "", 6)
+            else:
+                raise Exception("Predictor must be either 1 or 6")
+
         else:
             if bpp == 8:
                 tile = rawFrame.astype('uint8').tobytes()
@@ -116,11 +124,12 @@ class DNGBASE:
 
         return buf
 
-    def options(self, tags : DNGTags, path : str, compress=False) -> None:
+    def options(self, tags : DNGTags, path : str, compress=False, predictor=6) -> None:
         self.__tags_condition__(tags)
         self.tags = tags
         self.compress = compress
         self.path = path
+        self.predictor = predictor
 
     def convert(self, image : np.ndarray, filename=""):
 
@@ -131,7 +140,7 @@ class DNGBASE:
         self.__data_condition__(image)
         unpacked = self.__unpack_pixels__(image)
         filtered = self.__filter__(unpacked, self.filter)
-        buf = self.__process__(filtered, self.tags, self.compress)
+        buf = self.__process__(filtered, self.tags, self.compress, self.predictor)
 
         file_output = False
         if len(filename) > 0:
