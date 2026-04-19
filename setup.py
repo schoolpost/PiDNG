@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 ljpeg92 = Extension('ljpegCompress', sources=[
-                    "src/pidng/bitunpack.c", "src/pidng/liblj92/lj92.c"],  extra_compile_args=['-std=gnu99'], extra_link_args=[])
+                    "src/pidng/bitunpack.c", "src/pidng/liblj92/lj92.c"],  extra_compile_args=[], extra_link_args=[])
 
 setup(
     name="pidng",
