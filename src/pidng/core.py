@@ -94,8 +94,9 @@ class DNGBASE:
             Tag.StripOffsets, [0 for tile in dngTemplate.ImageDataStrips])
         mainIFD.tags.append(mainTagStripOffset)
         mainIFD.tags.append(dngTag(Tag.NewSubfileType, [0]))
-        mainIFD.tags.append(dngTag(Tag.StripByteCounts, [len(
-            tile) for tile in dngTemplate.ImageDataStrips]))
+        byte_counts = [tile.nbytes if isinstance(tile, memoryview) else len(tile)
+                       for tile in dngTemplate.ImageDataStrips]
+        mainIFD.tags.append(dngTag(Tag.StripByteCounts, byte_counts))
         mainIFD.tags.append(dngTag(Tag.Compression, [compression_scheme]))
         mainIFD.tags.append(dngTag(Tag.Software, "PiDNG"))
         mainIFD.tags.append(dngTag(Tag.DNGVersion, DNGVersion.V1_4))
