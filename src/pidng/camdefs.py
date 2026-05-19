@@ -136,9 +136,10 @@ class Picamera2Camera(BaseCameraModel):
             self.tags.set(Tag.PhotometricInterpretation, PhotometricInterpretation.Linear_Raw)
         
 class RaspberryPiHqCamera(BaseCameraModel):
-    def __init__(self, sensor_mode : int, cfaPattern=CFAPattern.BGGR, orientation=Orientation.Horizontal) -> None:
+    def __init__(self, sensor_mode : int, fmt : dict, cfaPattern=CFAPattern.BGGR, orientation=Orientation.Horizontal) -> None:
         super().__init__()
         self.model = RaspberryPiCameraModels.Raspberry_Pi_High_Quality_Camera
+        self.fmt = fmt
         self.mode = sensor_mode
         self.orientation = orientation
         self.cfaPattern = cfaPattern
@@ -167,6 +168,9 @@ class RaspberryPiHqCamera(BaseCameraModel):
         else: 
             bpp = 10
 
+        self.fmt['size']=(width,height)
+        self.fmt['bpp']=bpp
+        
         profile_name = "Repro 2_5D no LUT - D65 is really 5960K"
         profile_embed = 3
 
