@@ -4,16 +4,16 @@ import numpy as np
 import struct
 
 # image specs
-width = 4096
-height = 3072
+width = 2020
+height = 1072
 bpp= 12
 
 # load raw data into 16-bit numpy array.
 numPixels = width*height
-rawFile = 'extras/scene_daylight_211ms_c2.raw16'
+rawFile = '../rpi-raw-test/rpi-raw-test/test00000.raw'
 rf = open(rawFile, mode='rb')
 rawData = struct.unpack("H"*numPixels,rf.read(2*numPixels))
-rawFlatImage = np.zeros(numPixels, dtype=np.uint16)
+rawFlatImage = np.zeros((width, int(height / 3 * 2)), dtype=np.uint16)
 rawFlatImage[:] = rawData[:] 
 rawImage = np.reshape(rawFlatImage,(height,width))
 rawImage = rawImage >> (16 - bpp)
