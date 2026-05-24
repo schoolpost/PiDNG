@@ -35,14 +35,21 @@ typedef uint32_t u32;
 //#define SLOW_HUFF
 //#define DEBUG
 
-#if defined(__clang__)
-    #define _clz __builtin_clz
-#elif defined(__GNUC__) || defined(__GNUG__)
-    #define _clz __builtin_clz
-#elif defined(_MSC_VER)
-    #define _clz __lzcnt
+#if defined(_MSC_VER)
+#include <intrin.h>
+static inline int __msvc_clz(unsigned int x) {
+    unsigned long leading_zero;
+    if (_BitScanReverse(&leading_zero, x)) {
+        return 31 - leading_zero;
+    } else {
+        return 32;
+    }
+}
+#define _clz __msvc_clz
+#elif defined(__GNUC__) || defined(__clang__)
+#define _clz __builtin_clz
 #else
-    #error Could not find builtin clz function
+#error Could not find builtin clz function
 #endif
 
 typedef struct _ljp {
